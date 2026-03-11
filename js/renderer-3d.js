@@ -273,7 +273,7 @@ function _drawAxesGizmo(ctx, w, h, p, viewState) {
   for (const ax of axes) {
     let d = ax.dir;
     d = rotZ(d, -azimuth);
-    d = rotX(d, -(Math.PI / 2 - elevation));
+    d = rotX(d, elevation - Math.PI / 2);
 
     const ex = cx + d.x * len;
     const ey = cy - d.z * len;
