@@ -673,7 +673,14 @@ function calcTLEParse() {
     { label: 'Period',           value: kep.T_s/60, unit: 'min' },
     { label: 'Valid',            value: 'YES', variant: 'ok' },
   ], 'TLE Parsed');
-  _patchScenario({ tleResults: { ...parsed, ...kep } });
+  _patchScenario({
+    trackedObjectResults: [{
+      sourceType: 'TLE', propagationModel: 'Keplerian (two-body)',
+      modelBadge: '⚠ Approximate TLE interpretation — not SGP4',
+      ...parsed, ...kep,
+    }],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+  });
 }
 
 function calcTLEPropagate() {
@@ -693,7 +700,15 @@ function calcTLEPropagate() {
     { label: 'True Anomaly', value: r.trueAnomaly_deg, unit: '°' },
     { label: 'Note',       value: r.note ?? '—' },
   ], 'TLE Propagated Position');
-  _patchScenario({ tleResults: { lat_deg: r.lat_deg, lon_deg: r.lon_deg, alt_km: r.alt_km } });
+  _patchScenario({
+    trackedObjectResults: [{
+      sourceType: 'TLE', propagationModel: 'Keplerian (two-body)',
+      modelBadge: '⚠ Simplified two-body propagation — not SGP4',
+      lat_deg: r.lat_deg, lon_deg: r.lon_deg, alt_km: r.alt_km,
+      x_eci: r.x_eci, y_eci: r.y_eci, z_eci: r.z_eci,
+    }],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+  });
 }
 
 /* ================================================================
@@ -880,9 +895,14 @@ export function runAcceptanceTests() {
       const v = TLE.validateTLE(s.line1, s.line2);
       return v.valid === true;
     }},
-    { name: 'Scenario: createEmptyScenario has version', fn: () => {
+    { name: 'Scenario: createEmptyScenario has version 2.0', fn: () => {
       const s = Scenario.createEmptyScenario();
-      return s.version === '1.0';
+      return s.version === '2.0';
+    }},
+    { name: 'Scenario: v1.0 migrates to v2.0', fn: () => {
+      const old = { version: '1.0', tleResults: { satNumber: 25544 }, timeInput: { jd: 2451545, utc: '', unix: 0 } };
+      const migrated = Scenario.migrateScenario(old);
+      return migrated.version === '2.0' && Array.isArray(migrated.trackedObjectResults);
     }},
   ];
 
