@@ -1,0 +1,266 @@
+/* visualizer.css — Additional styles for CELES-CALC Visualizer window */
+
+/* Canvas containers */
+.viz-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-secondary, #0a0e1a);
+  overflow: hidden;
+}
+
+canvas.viz-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* Visualizer toolbar */
+.viz-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-header, #111827);
+  border-bottom: 1px solid var(--border, #2d3748);
+  flex-wrap: wrap;
+}
+
+.viz-toolbar .btn-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.viz-toolbar button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--border, #4a5568);
+  background: var(--btn-bg, #1e293b);
+  color: var(--text, #e2e8f0);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.viz-toolbar button:hover {
+  background: var(--btn-hover, #334155);
+}
+
+.viz-toolbar button.active {
+  background: var(--accent, #3b82f6);
+  border-color: var(--accent, #3b82f6);
+  color: #fff;
+}
+
+/* Layer toggles sidebar */
+.viz-sidebar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 180px;
+  background: rgba(15, 23, 42, 0.9);
+  border-left: 1px solid var(--border, #2d3748);
+  padding: 0.75rem;
+  overflow-y: auto;
+  backdrop-filter: blur(6px);
+  z-index: 10;
+  transition: transform 0.2s;
+}
+
+.viz-sidebar.collapsed {
+  transform: translateX(100%);
+}
+
+.viz-sidebar h4 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #94a3b8);
+  margin: 0 0 0.5rem 0;
+}
+
+.viz-sidebar .layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text, #e2e8f0);
+  cursor: pointer;
+}
+
+.viz-sidebar .layer-toggle input[type="checkbox"] {
+  accent-color: var(--accent, #3b82f6);
+}
+
+/* Sync status badge inside visualizer */
+.viz-sync-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.viz-sync-badge.connected {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.viz-sync-badge.waiting {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: #eab308;
+  color: #eab308;
+}
+
+.viz-sync-badge.paused {
+  background: rgba(156, 163, 175, 0.15);
+  border-color: #9ca3af;
+  color: #9ca3af;
+}
+
+.viz-sync-badge.local_only {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+/* Object info overlay */
+.viz-info-overlay {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--text, #e2e8f0);
+  backdrop-filter: blur(4px);
+  max-width: 220px;
+  pointer-events: none;
+}
+
+.viz-info-overlay .info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.viz-info-overlay .info-label {
+  color: var(--text-muted, #94a3b8);
+  flex-shrink: 0;
+}
+
+.viz-info-overlay .info-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Coordinate tooltip on hover */
+.viz-coord-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid var(--border, #4a5568);
+  border-radius: 4px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--text, #e2e8f0);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  z-index: 20;
+  display: none;
+}
+
+/* Scale bar */
+.viz-scale-bar {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  pointer-events: none;
+  font-size: 0.65rem;
+  color: var(--text-muted, #94a3b8);
+  text-align: center;
+}
+
+.viz-scale-bar .bar {
+  height: 4px;
+  background: var(--text-muted, #94a3b8);
+  margin-bottom: 2px;
+  border: 1px solid var(--text-muted, #94a3b8);
+  border-top: none;
+}
+
+/* Tab panel visibility */
+.viz-tab-panel {
+  display: none;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.viz-tab-panel.active {
+  display: block;
+}
+
+/* No-data placeholder */
+.viz-no-data {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #64748b);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.viz-no-data .viz-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.4;
+}
+
+/* Zoom controls */
+.viz-zoom-controls {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 15;
+}
+
+.viz-zoom-controls button {
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  line-height: 1;
+  border: 1px solid var(--border, #4a5568);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text, #e2e8f0);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viz-zoom-controls button:hover {
+  background: var(--btn-hover, #334155);
+}
+
+/* Responsive: on small screens collapse sidebar */
+@media (max-width: 600px) {
+  .viz-sidebar {
+    width: 140px;
+  }
+}

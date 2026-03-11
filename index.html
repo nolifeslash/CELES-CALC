@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CELES-CALC — Space-Earth-Moon Calculator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header id="app-header">
+  <span class="logo">CELES<em>-</em>CALC</span>
+  <span class="header-sub">Space · Earth · Moon</span>
+  <div class="header-actions">
+    <span id="sync-badge" title="Sync status">
+      <span class="sync-dot"></span><span id="sync-label">local only</span>
+    </span>
+    <button class="btn btn-sm btn-secondary" id="btn-open-viz" title="Open Visualizer">🔭 Visualizer</button>
+    <button id="theme-toggle" title="Toggle dark/light mode">🌙</button>
+  </div>
+</header>
+
+<!-- ── TAB BAR ────────────────────────────────────────────── -->
+<nav id="tab-bar">
+  <button class="tab-btn active" data-tab="home">      <span class="tab-icon">🏠</span> Home</button>
+  <button class="tab-btn" data-tab="time">             <span class="tab-icon">🕐</span> Time Systems</button>
+  <button class="tab-btn" data-tab="earth">            <span class="tab-icon">🌍</span> Earth Coords</button>
+  <button class="tab-btn" data-tab="moon">             <span class="tab-icon">🌕</span> Moon Coords</button>
+  <button class="tab-btn" data-tab="orbit">            <span class="tab-icon">🛸</span> Space/Orbital</button>
+  <button class="tab-btn" data-tab="tle">              <span class="tab-icon">📡</span> TLE Tools</button>
+  <button class="tab-btn" data-tab="visibility">       <span class="tab-icon">👁</span> Visibility</button>
+  <button class="tab-btn" data-tab="distance">         <span class="tab-icon">📏</span> Distance</button>
+</nav>
+
+<!-- ── MAIN ───────────────────────────────────────────────── -->
+<main id="app-main">
+
+  <!-- ═══════════════════════════════════════════════════════
+       HOME TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-home" class="tab-panel active">
+    <div class="hero">
+      <h1><span class="brand">CELES-CALC</span></h1>
+      <p>Space-Earth-Moon Time &amp; Location Calculator + Visualizer.<br>
+         All calculations run locally in your browser — no server required.</p>
+      <div class="btn-row" style="justify-content:center; border:none; padding-top:0">
+        <button class="btn btn-primary btn-lg" id="btn-load-demo">⚡ Load Demo Scenario</button>
+        <button class="btn btn-secondary btn-lg" id="btn-open-viz2">🔭 Open Visualizer</button>
+        <button class="btn btn-secondary btn-lg" id="btn-export-scenario">💾 Export JSON</button>
+        <button class="btn btn-secondary btn-lg" id="btn-import-scenario">📂 Import JSON</button>
+        <input type="file" id="import-file-input" accept=".json" class="hidden" />
+        <button class="btn btn-ghost btn-lg" id="btn-run-tests">🧪 Run Tests</button>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card" data-goto="time">
+        <div class="fc-icon">🕐</div>
+        <div class="fc-name">Time Systems</div>
+        <div class="fc-desc">UTC, JD, MJD, TAI, TT, GPS Week/TOW</div>
+      </div>
+      <div class="feature-card" data-goto="earth">
+        <div class="fc-icon">🌍</div>
+        <div class="fc-name">Earth Coords</div>
+        <div class="fc-desc">Geodetic, ECEF, ENU, Az/El, ECI</div>
+      </div>
+      <div class="feature-card" data-goto="moon">
+        <div class="fc-icon">🌕</div>
+        <div class="fc-name">Moon Coords</div>
+        <div class="fc-desc">Selenographic, illumination, sub-Earth</div>
+      </div>
+      <div class="feature-card" data-goto="orbit">
+        <div class="fc-icon">🛸</div>
+        <div class="fc-name">Orbital Mechanics</div>
+        <div class="fc-desc">COE, state vectors, Hohmann, maneuvers</div>
+      </div>
+      <div class="feature-card" data-goto="tle">
+        <div class="fc-icon">📡</div>
+        <div class="fc-name">TLE Tools</div>
+        <div class="fc-desc">Parse, validate, propagate satellite TLEs</div>
+      </div>
+      <div class="feature-card" data-goto="visibility">
+        <div class="fc-icon">👁</div>
+        <div class="fc-name">Visibility</div>
+        <div class="fc-desc">Observer-target visibility, eclipse checks</div>
+      </div>
+      <div class="feature-card" data-goto="distance">
+        <div class="fc-icon">📏</div>
+        <div class="fc-name">Distances</div>
+        <div class="fc-desc">Great-circle, Earth-Moon, grid illumination</div>
+      </div>
+      <div class="feature-card" id="home-viz-card">
+        <div class="fc-icon">🖼</div>
+        <div class="fc-name">Visualizer</div>
+        <div class="fc-desc">Live 2-D maps, orbit diagrams, geometry</div>
+      </div>
+    </div>
+
+    <!-- test runner output -->
+    <div id="test-results-area" class="hidden mt-md"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TIME SYSTEMS TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-time" class="tab-panel">
+    <div class="section-title">🕐 Time Systems Converter</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Input</div>
+        <div class="form-group">
+          <label>UTC Date/Time <span class="hint">ISO 8601 or "now"</span></label>
+          <input type="text" id="time-utc" placeholder="2025-01-15T12:00:00Z" />
+          <div class="err-msg" id="time-utc-err"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-time-calc">Calculate ▶</button>
+          <button class="btn btn-secondary" id="btn-time-now">📅 Now</button>
+          <button class="btn btn-ghost" id="btn-time-demo">Demo</button>
+          <button class="btn btn-ghost" id="btn-time-reset">↺ Reset</button>
+        </div>
+        <div class="alert alert-info mt-sm" style="font-size:var(--fs-xs)">
+          Accepts ISO 8601 strings, Julian dates (prefix "JD:"), GPS "week:tow", or Unix ms.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Precision</div>
+        <div class="prec-bar" id="time-prec-bar">
+          <button data-prec="edu">Educational</button>
+          <button data-prec="std" class="active">Standard</button>
+          <button data-prec="adv">Advanced</button>
+        </div>
+        <div class="mt-sm text-sm text-muted">
+          <b>Educational:</b> 3 sig figs &nbsp;|&nbsp;
+          <b>Standard:</b> 6 sig figs &nbsp;|&nbsp;
+          <b>Advanced:</b> 12 sig figs
+        </div>
+      </div>
+    </div>
+    <div class="results-area" id="time-results"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       EARTH COORDINATES TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-earth" class="tab-panel">
+    <div class="section-title">🌍 Earth Coordinate Transformations</div>
+    <div class="sub-tab-bar" id="earth-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="earth-geo">Geodetic ↔ ECEF</button>
+      <button class="sub-tab-btn" data-subtab="earth-enu">ECEF ↔ ENU</button>
+      <button class="sub-tab-btn" data-subtab="earth-azel">ENU ↔ Az/El</button>
+      <button class="sub-tab-btn" data-subtab="earth-eci">ECEF ↔ ECI</button>
+      <button class="sub-tab-btn" data-subtab="earth-obs">Observer → Target</button>
+      <button class="sub-tab-btn" data-subtab="earth-solar">Solar Geometry</button>
+    </div>
+
+    <!-- Geodetic ↔ ECEF -->
+    <div id="earth-geo" class="sub-panel active">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Geodetic → ECEF</div>
+          <div class="flex-row">
+            <div class="form-group"><label>Latitude (°)</label><input type="number" id="geo-lat" placeholder="60.1699" step="any"/></div>
+            <div class="form-group"><label>Longitude (°)</label><input type="number" id="geo-lon" placeholder="24.9384" step="any"/></div>
+            <div class="form-group"><label>Altitude (m)</label><input type="number" id="geo-alt" placeholder="30" step="any"/></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-geo2ecef">Geodetic → ECEF ▶</button>
+            <button class="btn btn-ghost" id="btn-geo-demo">Demo (Helsinki)</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">ECEF → Geodetic</div>
+          <div class="flex-row">
+            <div class="form-group"><label>X (m)</label><input type="number" id="ecef-x" placeholder="2885672" step="any"/></div>
+            <div class="form-group"><label>Y (m)</label><input type="number" id="ecef-y" placeholder="1310150" step="any"/></div>
+            <div class="form-group"><label>Z (m)</label><input type="number" id="ecef-z" placeholder="5512958" step="any"/></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-ecef2geo">ECEF → Geodetic ▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="results-area" id="earth-geo-results"></div>
+    </div>
+
+    <!-- ECEF ↔ ENU -->
+    <div id="earth-enu" class="sub-panel">
+      <div class="card">
+        <div class="card-title">ECEF Δ-vector → ENU (relative to reference point)</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Ref Lat (°)</label><input type="number" id="enu-reflat" placeholder="60.1699" step="any"/></div>
+          <div class="form-group"><label>Ref Lon (°)</label><input type="number" id="enu-reflon" placeholder="24.9384" step="any"/></div>
+        </div>
+        <div class="flex-row">
+          <div class="form-group"><label>ΔX (m)</label><input type="number" id="enu-dx" placeholder="1000" step="any"/></div>
+          <div class="form-group"><label>ΔY (m)</label><input type="number" id="enu-dy" placeholder="500" step="any"/></div>
+          <div class="form-group"><label>ΔZ (m)</label><input type="number" id="enu-dz" placeholder="-200" step="any"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-ecef2enu">ECEF → ENU ▶</button>
+          <button class="btn btn-secondary" id="btn-enu2ecef">ENU → ECEF ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="earth-enu-results"></div>
+    </div>
+
+    <!-- ENU ↔ Az/El -->
+    <div id="earth-azel" class="sub-panel">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">ENU → Az/El/Range</div>
+          <div class="flex-row">
+            <div class="form-group"><label>East (m)</label><input type="number" id="azel-e" placeholder="500" step="any"/></div>
+            <div class="form-group"><label>North (m)</label><input type="number" id="azel-n" placeholder="800" step="any"/></div>
+            <div class="form-group"><label>Up (m)</label><input type="number" id="azel-u" placeholder="200" step="any"/></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" id="btn-enu2azel">ENU → Az/El ▶</button></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Az/El/Range → ENU</div>
+          <div class="flex-row">
+            <div class="form-group"><label>Azimuth (°)</label><input type="number" id="az-val" placeholder="30" step="any"/></div>
+            <div class="form-group"><label>Elevation (°)</label><input type="number" id="el-val" placeholder="20" step="any"/></div>
+            <div class="form-group"><label>Range (m)</label><input type="number" id="rng-val" placeholder="1000" step="any"/></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" id="btn-azel2enu">Az/El → ENU ▶</button></div>
+        </div>
+      </div>
+      <div class="results-area" id="earth-azel-results"></div>
+    </div>
+
+    <!-- ECEF ↔ ECI -->
+    <div id="earth-eci" class="sub-panel">
+      <div class="card">
+        <div class="card-title">ECEF ↔ ECI (rotation via GMST)</div>
+        <div class="flex-row">
+          <div class="form-group"><label>X (m)</label><input type="number" id="eci-x" placeholder="2885672" step="any"/></div>
+          <div class="form-group"><label>Y (m)</label><input type="number" id="eci-y" placeholder="1310150" step="any"/></div>
+          <div class="form-group"><label>Z (m)</label><input type="number" id="eci-z" placeholder="5512958" step="any"/></div>
+          <div class="form-group"><label>UTC <span class="hint">ISO</span></label><input type="text" id="eci-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-ecef2eci">ECEF → ECI ▶</button>
+          <button class="btn btn-secondary" id="btn-eci2ecef">ECI → ECEF ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="earth-eci-results"></div>
+    </div>
+
+    <!-- Observer → Target -->
+    <div id="earth-obs" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Observer → Target (Az/El/Range)</div>
+        <div class="two-col">
+          <div>
+            <div class="card-title">Observer</div>
+            <div class="flex-row">
+              <div class="form-group"><label>Lat (°)</label><input type="number" id="obs-lat" placeholder="51.5" step="any"/></div>
+              <div class="form-group"><label>Lon (°)</label><input type="number" id="obs-lon" placeholder="-0.12" step="any"/></div>
+              <div class="form-group"><label>Alt (m)</label><input type="number" id="obs-alt" placeholder="50" step="any"/></div>
+            </div>
+          </div>
+          <div>
+            <div class="card-title">Target</div>
+            <div class="flex-row">
+              <div class="form-group"><label>Lat (°)</label><input type="number" id="tgt-lat" placeholder="48.85" step="any"/></div>
+              <div class="form-group"><label>Lon (°)</label><input type="number" id="tgt-lon" placeholder="2.35" step="any"/></div>
+              <div class="form-group"><label>Alt (m)</label><input type="number" id="tgt-alt" placeholder="50" step="any"/></div>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-obs2tgt">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-obs-demo">Demo (London→Paris)</button>
+        </div>
+      </div>
+      <div class="results-area" id="earth-obs-results"></div>
+    </div>
+
+    <!-- Solar Geometry -->
+    <div id="earth-solar" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Solar Geometry</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Latitude (°)</label><input type="number" id="solar-lat" placeholder="60.17" step="any"/></div>
+          <div class="form-group"><label>Longitude (°)</label><input type="number" id="solar-lon" placeholder="24.94" step="any"/></div>
+          <div class="form-group"><label>UTC <span class="hint">ISO</span></label><input type="text" id="solar-utc" placeholder="2025-06-21T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-solar-calc">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-solar-now">Now</button>
+        </div>
+      </div>
+      <div class="results-area" id="earth-solar-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MOON COORDINATES TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-moon" class="tab-panel">
+    <div class="section-title">🌕 Moon Coordinate Tools</div>
+    <div class="sub-tab-bar" id="moon-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="moon-seleno">Selenographic ↔ Cartesian</button>
+      <button class="sub-tab-btn" data-subtab="moon-pos">Moon Position</button>
+      <button class="sub-tab-btn" data-subtab="moon-illum">Illumination</button>
+      <button class="sub-tab-btn" data-subtab="moon-earthvis">Earth Visibility</button>
+    </div>
+
+    <!-- Selenographic ↔ Cartesian -->
+    <div id="moon-seleno" class="sub-panel active">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Selenographic → Lunar-Fixed Cartesian</div>
+          <div class="flex-row">
+            <div class="form-group"><label>Lat (°)</label><input type="number" id="sel-lat" placeholder="-8.97" step="any"/></div>
+            <div class="form-group"><label>Lon (°)</label><input type="number" id="sel-lon" placeholder="15.51" step="any"/></div>
+            <div class="form-group"><label>Alt (m)</label><input type="number" id="sel-alt" placeholder="0" step="any"/></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-sel2cart">→ Cartesian ▶</button>
+            <button class="btn btn-ghost" id="btn-sel-apollo11">Apollo 11</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Lunar-Fixed Cartesian → Selenographic</div>
+          <div class="flex-row">
+            <div class="form-group"><label>X (m)</label><input type="number" id="moon-cx" placeholder="1710000" step="any"/></div>
+            <div class="form-group"><label>Y (m)</label><input type="number" id="moon-cy" placeholder="270000" step="any"/></div>
+            <div class="form-group"><label>Z (m)</label><input type="number" id="moon-cz" placeholder="-270000" step="any"/></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" id="btn-cart2sel">→ Selenographic ▶</button></div>
+        </div>
+      </div>
+      <div class="results-area" id="moon-seleno-results"></div>
+    </div>
+
+    <!-- Moon Position -->
+    <div id="moon-pos" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Moon Position &amp; Sub-Points (ECI)</div>
+        <div class="flex-row">
+          <div class="form-group" style="flex:2"><label>UTC <span class="hint">ISO 8601</span></label><input type="text" id="moon-pos-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-moon-pos">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-moon-pos-now">Now</button>
+        </div>
+      </div>
+      <div class="results-area" id="moon-pos-results"></div>
+    </div>
+
+    <!-- Illumination -->
+    <div id="moon-illum" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Lunar Surface Illumination Check</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Latitude (°)</label><input type="number" id="millum-lat" placeholder="-89.9" step="any"/></div>
+          <div class="form-group"><label>Longitude (°)</label><input type="number" id="millum-lon" placeholder="0" step="any"/></div>
+          <div class="form-group" style="flex:2"><label>UTC</label><input type="text" id="millum-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-millum">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-millum-shackleton">Shackleton Crater</button>
+        </div>
+      </div>
+      <div class="results-area" id="moon-illum-results"></div>
+    </div>
+
+    <!-- Earth Visibility -->
+    <div id="moon-earthvis" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Earth Visibility from Moon Surface</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Lat (°)</label><input type="number" id="mearth-lat" placeholder="-8.97" step="any"/></div>
+          <div class="form-group"><label>Lon (°)</label><input type="number" id="mearth-lon" placeholder="15.51" step="any"/></div>
+          <div class="form-group" style="flex:2"><label>UTC</label><input type="text" id="mearth-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-mearth">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-mearth-demo">Near-side demo</button>
+        </div>
+      </div>
+      <div class="results-area" id="moon-earthvis-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SPACE / ORBITAL TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-orbit" class="tab-panel">
+    <div class="section-title">🛸 Space &amp; Orbital Mechanics</div>
+    <div class="sub-tab-bar" id="orbit-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="orbit-params">Orbital Parameters</button>
+      <button class="sub-tab-btn" data-subtab="orbit-coe2state">COE → State</button>
+      <button class="sub-tab-btn" data-subtab="orbit-state2coe">State → COE</button>
+      <button class="sub-tab-btn" data-subtab="orbit-anomaly">Anomaly Conversion</button>
+      <button class="sub-tab-btn" data-subtab="orbit-hohmann">Hohmann Transfer</button>
+      <button class="sub-tab-btn" data-subtab="orbit-plane">Plane Change</button>
+    </div>
+
+    <!-- Orbital Parameters -->
+    <div id="orbit-params" class="sub-panel active">
+      <div class="card">
+        <div class="card-title">Basic Orbital Parameters</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Semi-major axis a (m)</label><input type="number" id="op-a" placeholder="6778137" step="any"/></div>
+          <div class="form-group"><label>Body <span class="hint">Earth/Moon</span></label>
+            <select id="op-body"><option value="earth">Earth (GM=3.986e14)</option><option value="moon">Moon (GM=4.902e12)</option></select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-orbit-params">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-orbit-iss">ISS (~400 km)</button>
+        </div>
+      </div>
+      <div class="results-area" id="orbit-params-results"></div>
+    </div>
+
+    <!-- COE → State -->
+    <div id="orbit-coe2state" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Classical Orbital Elements → State Vector (ECI)</div>
+        <div class="flex-row">
+          <div class="form-group"><label>a (m)</label><input type="number" id="coe-a" placeholder="6778137" step="any"/></div>
+          <div class="form-group"><label>e</label><input type="number" id="coe-e" placeholder="0.001" step="any"/></div>
+          <div class="form-group"><label>i (°)</label><input type="number" id="coe-i" placeholder="51.6" step="any"/></div>
+          <div class="form-group"><label>RAAN (°)</label><input type="number" id="coe-raan" placeholder="45" step="any"/></div>
+          <div class="form-group"><label>ω (°)</label><input type="number" id="coe-argp" placeholder="90" step="any"/></div>
+          <div class="form-group"><label>ν (°)</label><input type="number" id="coe-nu" placeholder="0" step="any"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-coe2state">COE → State ▶</button>
+          <button class="btn btn-ghost" id="btn-coe-iss">ISS Example</button>
+        </div>
+      </div>
+      <div class="results-area" id="orbit-coe2state-results"></div>
+    </div>
+
+    <!-- State → COE -->
+    <div id="orbit-state2coe" class="sub-panel">
+      <div class="card">
+        <div class="card-title">State Vector (ECI) → Classical Orbital Elements</div>
+        <div class="flex-row">
+          <div class="form-group"><label>rx (m)</label><input type="number" id="sv-rx" placeholder="-2700816" step="any"/></div>
+          <div class="form-group"><label>ry (m)</label><input type="number" id="sv-ry" placeholder="-3314887" step="any"/></div>
+          <div class="form-group"><label>rz (m)</label><input type="number" id="sv-rz" placeholder="5167791" step="any"/></div>
+          <div class="form-group"><label>vx (m/s)</label><input type="number" id="sv-vx" placeholder="5168" step="any"/></div>
+          <div class="form-group"><label>vy (m/s)</label><input type="number" id="sv-vy" placeholder="-5597" step="any"/></div>
+          <div class="form-group"><label>vz (m/s)</label><input type="number" id="sv-vz" placeholder="-868" step="any"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" id="btn-state2coe">State → COE ▶</button></div>
+      </div>
+      <div class="results-area" id="orbit-state2coe-results"></div>
+    </div>
+
+    <!-- Anomaly Conversion -->
+    <div id="orbit-anomaly" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Anomaly Conversions</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Eccentricity e</label><input type="number" id="anom-e" placeholder="0.1" step="any"/></div>
+          <div class="form-group"><label>Mean Anomaly M (°)</label><input type="number" id="anom-M" placeholder="45" step="any"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-anom-calc">M → E → ν ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="orbit-anomaly-results"></div>
+    </div>
+
+    <!-- Hohmann Transfer -->
+    <div id="orbit-hohmann" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Hohmann Transfer ΔV</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Initial orbit radius r₁ (m)</label><input type="number" id="hoh-r1" placeholder="6778137" step="any"/></div>
+          <div class="form-group"><label>Final orbit radius r₂ (m)</label><input type="number" id="hoh-r2" placeholder="42164000" step="any"/></div>
+          <div class="form-group"><label>Body</label>
+            <select id="hoh-body"><option value="earth">Earth</option><option value="moon">Moon</option></select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-hohmann">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-hoh-geo">LEO → GEO</button>
+        </div>
+      </div>
+      <div class="results-area" id="orbit-hohmann-results"></div>
+    </div>
+
+    <!-- Plane Change -->
+    <div id="orbit-plane" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Plane Change ΔV</div>
+        <div class="flex-row">
+          <div class="form-group"><label>Orbital velocity v (m/s)</label><input type="number" id="pc-v" placeholder="7784" step="any"/></div>
+          <div class="form-group"><label>Inclination change Δi (°)</label><input type="number" id="pc-di" placeholder="5" step="any"/></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" id="btn-plane-change">Calculate ΔV ▶</button></div>
+      </div>
+      <div class="results-area" id="orbit-plane-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TLE TOOLS TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-tle" class="tab-panel">
+    <div class="section-title">📡 TLE Tools</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">TLE Input</div>
+        <div class="form-group">
+          <label>Name (optional)</label>
+          <input type="text" id="tle-name" placeholder="ISS (ZARYA)" />
+        </div>
+        <div class="form-group">
+          <label>Line 1</label>
+          <textarea id="tle-line1" rows="2" class="tle-input" placeholder="1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9998"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Line 2</label>
+          <textarea id="tle-line2" rows="2" class="tle-input" placeholder="2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.50000000 00001"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Propagate to UTC <span class="hint">leave blank for epoch</span></label>
+          <input type="text" id="tle-epoch" placeholder="2025-01-15T12:00:00Z" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-tle-parse">Parse &amp; Validate ▶</button>
+          <button class="btn btn-secondary" id="btn-tle-propagate">Propagate ▶</button>
+        </div>
+        <hr class="divider"/>
+        <div class="card-title">Load Sample TLE</div>
+        <div class="btn-row" style="border:none;padding-top:0;margin-top:0">
+          <button class="btn btn-ghost btn-sm" data-sample-tle="iss">ISS</button>
+          <button class="btn btn-ghost btn-sm" data-sample-tle="noaa19">NOAA-19</button>
+          <button class="btn btn-ghost btn-sm" data-sample-tle="gpsPRN11">GPS PRN11</button>
+          <button class="btn btn-ghost btn-sm" data-sample-tle="molniya">Molniya</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Results</div>
+        <div id="tle-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       VISIBILITY TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-visibility" class="tab-panel">
+    <div class="section-title">👁 Visibility Calculator</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Observer</div>
+        <div class="form-group">
+          <label>Observer Type</label>
+          <select id="vis-obs-type">
+            <option value="earth_surface">Earth Surface</option>
+            <option value="moon_surface">Moon Surface</option>
+          </select>
+        </div>
+        <div class="flex-row">
+          <div class="form-group"><label>Lat (°)</label><input type="number" id="vis-obs-lat" placeholder="51.5" step="any"/></div>
+          <div class="form-group"><label>Lon (°)</label><input type="number" id="vis-obs-lon" placeholder="-0.12" step="any"/></div>
+          <div class="form-group"><label>Alt (m)</label><input type="number" id="vis-obs-alt" placeholder="50" step="any"/></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Target</div>
+        <div class="form-group">
+          <label>Target Type</label>
+          <select id="vis-tgt-type">
+            <option value="earth_point">Earth Surface Point</option>
+            <option value="moon_point">Moon Surface Point</option>
+            <option value="sun">Sun</option>
+          </select>
+        </div>
+        <div class="flex-row">
+          <div class="form-group"><label>Lat (°)</label><input type="number" id="vis-tgt-lat" placeholder="48.85" step="any"/></div>
+          <div class="form-group"><label>Lon (°)</label><input type="number" id="vis-tgt-lon" placeholder="2.35" step="any"/></div>
+          <div class="form-group"><label>Alt (m)</label><input type="number" id="vis-tgt-alt" placeholder="50" step="any"/></div>
+        </div>
+      </div>
+    </div>
+    <div class="card mt-md">
+      <div class="flex-row">
+        <div class="form-group" style="flex:2"><label>UTC <span class="hint">ISO 8601</span></label><input type="text" id="vis-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-vis-calc">Check Visibility ▶</button>
+        <button class="btn btn-ghost" id="btn-vis-now">Now</button>
+        <button class="btn btn-ghost" id="btn-vis-demo">Demo</button>
+      </div>
+    </div>
+    <div class="results-area" id="vis-results"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DISTANCE & MEASUREMENT TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-distance" class="tab-panel">
+    <div class="section-title">📏 Distance &amp; Measurement</div>
+    <div class="sub-tab-bar" id="dist-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="dist-gc">Great-Circle</button>
+      <button class="sub-tab-btn" data-subtab="dist-earthmoon">Earth–Moon</button>
+      <button class="sub-tab-btn" data-subtab="dist-grid">Lunar Grid Illumination</button>
+    </div>
+
+    <!-- Great-Circle -->
+    <div id="dist-gc" class="sub-panel active">
+      <div class="card">
+        <div class="card-title">Great-Circle Distance &amp; Bearing</div>
+        <div class="two-col">
+          <div>
+            <div class="card-title">Point 1</div>
+            <div class="flex-row">
+              <div class="form-group"><label>Lat (°)</label><input type="number" id="gc-lat1" placeholder="51.5" step="any"/></div>
+              <div class="form-group"><label>Lon (°)</label><input type="number" id="gc-lon1" placeholder="-0.12" step="any"/></div>
+            </div>
+          </div>
+          <div>
+            <div class="card-title">Point 2</div>
+            <div class="flex-row">
+              <div class="form-group"><label>Lat (°)</label><input type="number" id="gc-lat2" placeholder="40.71" step="any"/></div>
+              <div class="form-group"><label>Lon (°)</label><input type="number" id="gc-lon2" placeholder="-74.01" step="any"/></div>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-gc-calc">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-gc-demo">London → New York</button>
+        </div>
+      </div>
+      <div class="results-area" id="dist-gc-results"></div>
+    </div>
+
+    <!-- Earth-Moon Distance -->
+    <div id="dist-earthmoon" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Earth–Moon Distance</div>
+        <div class="flex-row">
+          <div class="form-group" style="flex:2"><label>UTC</label><input type="text" id="em-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-em-calc">Calculate ▶</button>
+          <button class="btn btn-ghost" id="btn-em-now">Now</button>
+        </div>
+      </div>
+      <div class="results-area" id="dist-em-results"></div>
+    </div>
+
+    <!-- Lunar Grid Illumination -->
+    <div id="dist-grid" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Lunar Grid Illumination Map</div>
+        <div class="flex-row">
+          <div class="form-group" style="flex:2"><label>UTC</label><input type="text" id="grid-utc" placeholder="2025-01-15T12:00:00Z"/></div>
+          <div class="form-group"><label>Cell Size (°)</label><input type="number" id="grid-cell" placeholder="30" min="1" max="90"/></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-grid-calc">Calculate Grid ▶</button>
+          <button class="btn btn-ghost" id="btn-grid-now">Now</button>
+        </div>
+        <div class="alert alert-warn mt-sm" style="font-size:var(--fs-xs)">
+          Small cell sizes (e.g. 5°) generate many cells. Use 15–30° for quick results.
+        </div>
+      </div>
+      <div class="results-area" id="dist-grid-results"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── MODALS ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="formula-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="formula-modal-title">Formulas</div>
+      <button class="modal-close" id="formula-modal-close">✕</button>
+    </div>
+    <div id="formula-modal-body"></div>
+  </div>
+</div>
+
+<!-- ── TOAST CONTAINER ────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
