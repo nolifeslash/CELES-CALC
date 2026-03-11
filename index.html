@@ -31,6 +31,8 @@
   <button class="tab-btn" data-tab="tle">              <span class="tab-icon">📡</span> Tracked Objects</button>
   <button class="tab-btn" data-tab="visibility">       <span class="tab-icon">👁</span> Visibility</button>
   <button class="tab-btn" data-tab="distance">         <span class="tab-icon">📏</span> Distance</button>
+  <button class="tab-btn" data-tab="satcom">           <span class="tab-icon">📡</span> RF/SATCOM</button>
+  <button class="tab-btn" data-tab="launch">           <span class="tab-icon">🚀</span> Launch Planner</button>
 </nav>
 
 <!-- ── MAIN ───────────────────────────────────────────────── -->
@@ -89,6 +91,16 @@
         <div class="fc-icon">📏</div>
         <div class="fc-name">Distances</div>
         <div class="fc-desc">Great-circle, Earth-Moon, grid illumination</div>
+      </div>
+      <div class="feature-card" data-goto="satcom">
+        <div class="fc-icon">📡</div>
+        <div class="fc-name">RF / SATCOM</div>
+        <div class="fc-desc">Link budgets, ground stations, interference, SIGINT</div>
+      </div>
+      <div class="feature-card" data-goto="launch">
+        <div class="fc-icon">🚀</div>
+        <div class="fc-name">Launch Planner</div>
+        <div class="fc-desc">Launch windows, transfers, RPO, lunar missions</div>
       </div>
       <div class="feature-card" id="home-viz-card">
         <div class="fc-icon">🖼</div>
@@ -766,6 +778,365 @@
         </div>
       </div>
       <div class="results-area" id="dist-grid-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       RF / SATCOM / SIGINT TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-satcom" class="tab-panel">
+    <div class="section-title">📡 RF / SATCOM / SIGINT</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — RF / SATCOM / SIGINT</summary>
+      <ul>
+        <li><strong>Link Budget:</strong> TX/RX gains, frequency, distance → margin, throughput, Eb/N₀</li>
+        <li><strong>Station Comparison:</strong> Rank ground stations by coverage, margin, cost</li>
+        <li><strong>Route Comparison:</strong> Compare direct vs relay link paths</li>
+        <li><strong>Interference/Jamming:</strong> J/S, J/N analysis with mitigation options</li>
+        <li><strong>SIGINT Opportunity:</strong> Emitter detection score, intercept probability</li>
+      </ul>
+    </details>
+    <div class="sub-tab-bar" id="satcom-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="satcom-linkbudget">Link Budget</button>
+      <button class="sub-tab-btn" data-subtab="satcom-stations">Station Comparison</button>
+      <button class="sub-tab-btn" data-subtab="satcom-routes">Route Comparison</button>
+      <button class="sub-tab-btn" data-subtab="satcom-interference">Interference/Jamming</button>
+      <button class="sub-tab-btn" data-subtab="satcom-sigint">SIGINT Opportunity</button>
+    </div>
+
+    <!-- Link Budget -->
+    <div id="satcom-linkbudget" class="sub-panel active">
+      <div class="card">
+        <div class="card-title">RF Link Budget</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>TX Power (dBW)</label><input type="number" id="lb-txpower" placeholder="10" step="any"/></div>
+            <div class="form-group"><label>TX Antenna Gain (dBi)</label><input type="number" id="lb-txgain" placeholder="30" step="any"/></div>
+            <div class="form-group"><label>RX Antenna Gain (dBi)</label><input type="number" id="lb-rxgain" placeholder="40" step="any"/></div>
+            <div class="form-group"><label>Frequency (GHz)</label><input type="number" id="lb-freq" placeholder="12.0" step="any"/></div>
+            <div class="form-group"><label>Bandwidth (MHz)</label><input type="number" id="lb-bw" placeholder="36" step="any"/></div>
+            <div class="form-group"><label>Data Rate (Mbps)</label><input type="number" id="lb-datarate" placeholder="50" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Distance (km)</label><input type="number" id="lb-distance" placeholder="36000" step="any"/></div>
+            <div class="form-group"><label>Pointing Loss (dB)</label><input type="number" id="lb-pointloss" placeholder="0.5" step="any"/></div>
+            <div class="form-group"><label>Misc Losses (dB)</label><input type="number" id="lb-miscloss" placeholder="2" step="any"/></div>
+            <div class="form-group">
+              <label>Band / Weather</label>
+              <select id="lb-weather">
+                <option value="clear_sky">Clear Sky</option>
+                <option value="light_rain">Light Rain</option>
+                <option value="heavy_rain">Heavy Rain</option>
+                <option value="storm">Storm</option>
+                <option value="polar_dry">Polar Dry</option>
+                <option value="maritime_humid">Maritime Humid</option>
+                <option value="desert_dry">Desert Dry</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Elevation Angle (°)</label><input type="number" id="lb-elevation" placeholder="30" step="any"/></div>
+            <div class="form-group">
+              <label>Modulation</label>
+              <select id="lb-modulation">
+                <option value="BPSK_12">BPSK 1/2</option>
+                <option value="QPSK_12">QPSK 1/2</option>
+                <option value="QPSK_34" selected>QPSK 3/4</option>
+                <option value="8PSK_34">8PSK 3/4</option>
+                <option value="16APSK_56">16APSK 5/6</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-lb-calc">Calculate Link Budget ▶</button>
+          <button class="btn btn-ghost" id="btn-lb-demo">Demo (Ku-band GEO)</button>
+        </div>
+      </div>
+      <div class="results-area" id="satcom-lb-results"></div>
+    </div>
+
+    <!-- Station Comparison -->
+    <div id="satcom-stations" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Ground Station Comparison</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Orbit Alt (km)</label><input type="number" id="st-alt" placeholder="800" step="any"/></div>
+            <div class="form-group"><label>Inclination (°)</label><input type="number" id="st-inc" placeholder="98" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label>Band</label>
+              <select id="st-band">
+                <option value="L">L</option>
+                <option value="S">S</option>
+                <option value="C">C</option>
+                <option value="X" selected>X</option>
+                <option value="Ku">Ku</option>
+                <option value="Ka">Ka</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Weather</label>
+              <select id="st-weather">
+                <option value="clear_sky">Clear Sky</option>
+                <option value="light_rain">Light Rain</option>
+                <option value="heavy_rain">Heavy Rain</option>
+                <option value="storm">Storm</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Optimization Mode</label>
+              <select id="st-optmode">
+                <option value="highest_margin">Highest Margin</option>
+                <option value="highest_throughput">Highest Throughput</option>
+                <option value="lowest_latency">Lowest Latency</option>
+                <option value="most_resilient">Most Resilient</option>
+                <option value="best_ttc">Best TT&amp;C</option>
+                <option value="best_eo">Best EO</option>
+                <option value="best_mixed">Best Mixed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-st-calc">Compare Stations ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="satcom-st-results"></div>
+    </div>
+
+    <!-- Route Comparison -->
+    <div id="satcom-routes" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Route Comparison (Direct vs Relay)</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Distance 1 (km)</label><input type="number" id="rt-dist1" placeholder="2000" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Distance 2 (km)</label><input type="number" id="rt-dist2" placeholder="36000" step="any"/></div>
+          </div>
+        </div>
+        <div class="form-group"><label>Frequency (GHz)</label><input type="number" id="rt-freq" placeholder="12" step="any"/></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-rt-calc">Compare Routes ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="satcom-rt-results"></div>
+    </div>
+
+    <!-- Interference / Jamming -->
+    <div id="satcom-interference" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Interference / Jamming Analysis</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Signal Power (dBW)</label><input type="number" id="ij-sigpower" placeholder="-120" step="any"/></div>
+            <div class="form-group"><label>Noise Power (dBW)</label><input type="number" id="ij-noisepower" placeholder="-150" step="any"/></div>
+            <div class="form-group"><label>Jammer EIRP (dBW)</label><input type="number" id="ij-jameirp" placeholder="40" step="any"/></div>
+            <div class="form-group"><label>Jammer Distance (km)</label><input type="number" id="ij-jamdist" placeholder="500" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Frequency (GHz)</label><input type="number" id="ij-freq" placeholder="12" step="any"/></div>
+            <div class="form-group">
+              <label>Jammer Mode</label>
+              <select id="ij-mode">
+                <option value="spot">Spot</option>
+                <option value="barrage">Barrage</option>
+                <option value="swept">Swept</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Bandwidth (MHz)</label><input type="number" id="ij-bw" placeholder="36" step="any"/></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-ij-calc">Assess Interference ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="satcom-ij-results"></div>
+    </div>
+
+    <!-- SIGINT Opportunity -->
+    <div id="satcom-sigint" class="sub-panel">
+      <div class="card">
+        <div class="card-title">SIGINT Collection Opportunity</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Emitter EIRP (dBW)</label><input type="number" id="si-emeirp" placeholder="20" step="any"/></div>
+            <div class="form-group"><label>Frequency (GHz)</label><input type="number" id="si-freq" placeholder="10" step="any"/></div>
+            <div class="form-group"><label>Emitter Distance (km)</label><input type="number" id="si-dist" placeholder="1000" step="any"/></div>
+            <div class="form-group"><label>Collector Sensitivity (dBW)</label><input type="number" id="si-sens" placeholder="-160" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Collector Gain (dBi)</label><input type="number" id="si-gain" placeholder="35" step="any"/></div>
+            <div class="form-group"><label>Dwell Time (s)</label><input type="number" id="si-dwell" placeholder="10" step="any"/></div>
+            <div class="form-group"><label>Bandwidth (MHz)</label><input type="number" id="si-bw" placeholder="10" step="any"/></div>
+            <div class="form-group"><label>Duty Cycle (0–1)</label><input type="number" id="si-duty" placeholder="0.5" step="any" min="0" max="1"/></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-si-calc">Assess SIGINT ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="satcom-si-results"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LAUNCH PLANNER TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-launch" class="tab-panel">
+    <div class="section-title">🚀 Launch Planner / Transfer / RPO</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Launch Planner</summary>
+      <ul>
+        <li><strong>Launch to Orbit:</strong> Select site, target orbit, vehicle → feasibility, azimuth, ΔV</li>
+        <li><strong>Orbit Transfer:</strong> Hohmann / bi-elliptic with optional plane change</li>
+        <li><strong>Phasing / RPO:</strong> Rendezvous manoeuvres for inspection / servicing</li>
+        <li><strong>Lunar Transfer:</strong> TLI, LOI, transfer duration estimate</li>
+        <li><strong>Delta-V Budget:</strong> Pre-built mission budgets with breakdown table</li>
+      </ul>
+    </details>
+    <div class="sub-tab-bar" id="launch-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="launch-lto">Launch to Orbit</button>
+      <button class="sub-tab-btn" data-subtab="launch-transfer">Orbit Transfer</button>
+      <button class="sub-tab-btn" data-subtab="launch-rpo">Phasing / RPO</button>
+      <button class="sub-tab-btn" data-subtab="launch-lunar">Lunar Transfer</button>
+      <button class="sub-tab-btn" data-subtab="launch-deltav">Delta-V Budget</button>
+    </div>
+
+    <!-- Launch to Orbit -->
+    <div id="launch-lto" class="sub-panel active">
+      <div class="card">
+        <div class="card-title">Launch to Orbit</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group">
+              <label>Launch Site</label>
+              <select id="lto-site">
+                <option value="cape_canaveral">Cape Canaveral</option>
+                <option value="baikonur">Baikonur</option>
+                <option value="kourou">Kourou (CSG)</option>
+                <option value="vandenberg">Vandenberg SFB</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Target Alt (km)</label><input type="number" id="lto-alt" placeholder="400" step="any"/></div>
+            <div class="form-group"><label>Target Inclination (°)</label><input type="number" id="lto-inc" placeholder="51.6" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Payload (kg)</label><input type="number" id="lto-payload" placeholder="5000" step="any"/></div>
+            <div class="form-group">
+              <label>Vehicle Class</label>
+              <select id="lto-vehicle">
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium</option>
+                <option value="heavy">Heavy</option>
+                <option value="super_heavy">Super Heavy</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-lto-calc">Plan Launch ▶</button>
+          <button class="btn btn-ghost" id="btn-lto-demo">Demo (ISS from Cape)</button>
+        </div>
+      </div>
+      <div class="results-area" id="launch-lto-results"></div>
+    </div>
+
+    <!-- Orbit Transfer -->
+    <div id="launch-transfer" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Orbit Transfer (Hohmann / Bi-Elliptic)</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Initial Orbit Alt (km)</label><input type="number" id="tr-alt1" placeholder="400" step="any"/></div>
+            <div class="form-group"><label>Target Orbit Alt (km)</label><input type="number" id="tr-alt2" placeholder="35786" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Plane Change (°)</label><input type="number" id="tr-planechg" placeholder="0" step="any"/></div>
+            <div class="form-group">
+              <label>Transfer Type</label>
+              <select id="tr-type">
+                <option value="hohmann">Hohmann</option>
+                <option value="bielliptic">Bi-Elliptic</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-tr-calc">Calculate Transfer ▶</button>
+          <button class="btn btn-ghost" id="btn-tr-demo">Demo (LEO → GEO)</button>
+        </div>
+      </div>
+      <div class="results-area" id="launch-tr-results"></div>
+    </div>
+
+    <!-- Phasing / RPO -->
+    <div id="launch-rpo" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Phasing / Rendezvous Proximity Operations</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Chaser Alt (km)</label><input type="number" id="rpo-alt1" placeholder="400" step="any"/></div>
+            <div class="form-group"><label>Target Alt (km)</label><input type="number" id="rpo-alt2" placeholder="410" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Phase Angle (°)</label><input type="number" id="rpo-phase" placeholder="30" step="any"/></div>
+            <div class="form-group">
+              <label>Mission Type</label>
+              <select id="rpo-type">
+                <option value="inspection">Inspection</option>
+                <option value="service">Servicing</option>
+                <option value="deorbit">De-orbit</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-rpo-calc">Plan Rendezvous ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="launch-rpo-results"></div>
+    </div>
+
+    <!-- Lunar Transfer -->
+    <div id="launch-lunar" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Lunar Transfer</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group"><label>Departure Alt (km)</label><input type="number" id="lt-depalt" placeholder="400" step="any"/></div>
+          </div>
+          <div>
+            <div class="form-group"><label>Lunar Orbit Alt (km)</label><input type="number" id="lt-moonalt" placeholder="100" step="any"/></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-lt-calc">Plan Lunar Transfer ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="launch-lt-results"></div>
+    </div>
+
+    <!-- Delta-V Budget -->
+    <div id="launch-deltav" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Delta-V Budget</div>
+        <div class="form-group">
+          <label>Mission Preset</label>
+          <select id="dv-preset">
+            <option value="leo_to_geo">LEO → GEO</option>
+            <option value="leo_to_moon">LEO → Moon</option>
+            <option value="leo_servicing">LEO Servicing</option>
+            <option value="custom">Custom (empty)</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-dv-calc">Show Budget ▶</button>
+        </div>
+      </div>
+      <div class="results-area" id="launch-dv-results"></div>
     </div>
   </div>
 
