@@ -396,6 +396,57 @@ export function propagateOrbitSimple(parsed, jd) {
   };
 }
 
+// ─── TLE Streaming ───────────────────────────────────────────────────────────
+
+/**
+ * TLE source URLs for streaming from CelesTrak.
+ */
+export const TLE_SOURCES = {
+  iss:            { url: 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle', label: 'ISS (ZARYA)' },
+  stations:       { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle', label: 'Space Stations' },
+  active:         { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle', label: 'Active Satellites' },
+  gps:            { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle', label: 'GPS Operational' },
+  starlink:       { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle', label: 'Starlink' },
+  weather:        { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle', label: 'Weather' },
+  geo:            { url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle', label: 'Geostationary' },
+};
+
+/**
+ * Fetch TLE data from a URL.
+ * @param {string} url - URL to fetch TLE data from
+ * @returns {Promise<Array<{name:string, line1:string, line2:string}>>} Array of parsed TLE objects
+ */
+export async function fetchTLEFromURL(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  const text = await response.text();
+  return parseTLEBatch(text);
+}
+
+/**
+ * Parse multiple TLEs from a text block (3-line format: name, line1, line2).
+ * @param {string} text - Raw TLE text (3-line format)
+ * @returns {Array<{name:string, line1:string, line2:string}>}
+ */
+export function parseTLEBatch(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const tles = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (lines[i].startsWith('1 ') && i + 1 < lines.length && lines[i+1].startsWith('2 ')) {
+      const catNum = lines[i].substring(2, 7).trim();
+      tles.push({ name: catNum ? `NORAD ${catNum}` : 'Unknown', line1: lines[i], line2: lines[i+1] });
+      i += 2;
+    } else if (i + 2 < lines.length && lines[i+1].startsWith('1 ') && lines[i+2].startsWith('2 ')) {
+      tles.push({ name: lines[i], line1: lines[i+1], line2: lines[i+2] });
+      i += 3;
+    } else {
+      i++;
+    }
+  }
+  return tles;
+}
+
 // ─── Sample TLEs ─────────────────────────────────────────────────────────────
 
 /**

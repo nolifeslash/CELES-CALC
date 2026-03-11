@@ -56,6 +56,14 @@
     <button class="view-ctrl-btn" id="viz-reset-view">↺ Reset View</button>
 
     <hr class="divider"/>
+    <h3>Zoom Presets</h3>
+    <button class="view-ctrl-btn" id="viz-zoom-galactic">🌌 Galactic</button>
+    <button class="view-ctrl-btn" id="viz-zoom-solar">☀️ Solar System</button>
+    <button class="view-ctrl-btn" id="viz-zoom-earth-moon">🌍🌕 Earth-Moon</button>
+    <button class="view-ctrl-btn" id="viz-zoom-earth">🌍 Earth</button>
+    <button class="view-ctrl-btn" id="viz-zoom-moon-close">🌕 Moon</button>
+
+    <hr class="divider"/>
     <h3>Scenario</h3>
     <button class="view-ctrl-btn" id="viz-load-last">📂 Load Last</button>
     <button class="view-ctrl-btn" id="viz-pause-sync">⏸ Pause Sync</button>
@@ -64,6 +72,15 @@
 
   <!-- Canvas area -->
   <div id="viz-canvas-area">
+    <div id="viz-toolbar" class="viz-toolbar">
+      <div class="btn-group">
+        <button id="viz-tool-pointer" class="active" title="Pointer">🖱️</button>
+        <button id="viz-tool-distance" title="Measure Distance">📏</button>
+        <button id="viz-tool-angle" title="Measure Angle">📐</button>
+        <button id="viz-tool-clear" title="Clear Measurements">🗑️</button>
+      </div>
+      <span id="viz-tool-readout" style="margin-left:auto;font-size:0.75rem;color:#8b949e">—</span>
+    </div>
     <!-- Earth Map -->
     <div class="viz-tab-panel active" id="vtp-earth-map">
       <canvas id="canvas-earth"></canvas>
@@ -81,7 +98,7 @@
       <canvas id="canvas-geometry"></canvas>
     </div>
     <!-- Combined (2x2 grid) -->
-    <div class="viz-tab-panel" id="vtp-combined" style="display:none;position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#000">
+    <div class="viz-tab-panel" id="vtp-combined">
       <canvas id="canvas-combined-earth"  style="width:100%;height:100%;display:block"></canvas>
       <canvas id="canvas-combined-moon"   style="width:100%;height:100%;display:block"></canvas>
       <canvas id="canvas-combined-orbit"  style="width:100%;height:100%;display:block"></canvas>

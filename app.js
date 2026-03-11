@@ -12,6 +12,7 @@ import * as Scenario   from './js/scenario.js';
 import * as Sync       from './js/sync.js';
 import * as UI         from './js/ui.js';
 import { SAMPLE_TLES, SAMPLE_SCENARIOS, PRESET_LOCATIONS } from './js/sample-data.js';
+import { TLE_SOURCES, fetchTLEFromURL } from './js/tle.js';
 import { GM_EARTH, GM_MOON, R_EARTH_MEAN } from './js/constants.js';
 
 /* ================================================================
@@ -589,6 +590,60 @@ function wireTLETab() {
       document.getElementById('tle-line2').value = s.line2;
     });
   });
+
+  // TLE streaming from internet
+  document.getElementById('btn-tle-fetch')?.addEventListener('click', handleTLEFetch);
+}
+
+async function handleTLEFetch() {
+  const sourceKey = document.getElementById('tle-stream-source')?.value;
+  const source = TLE_SOURCES[sourceKey];
+  if (!source) return;
+
+  const statusEl  = document.getElementById('tle-stream-status');
+  const listEl    = document.getElementById('tle-stream-results');
+  const fetchBtn  = document.getElementById('btn-tle-fetch');
+
+  statusEl.innerHTML = '<div class="alert alert-info">Fetching TLEs from CelesTrak…</div>';
+  listEl.innerHTML = '';
+  fetchBtn.disabled = true;
+
+  try {
+    const tles = await fetchTLEFromURL(source.url);
+    if (tles.length === 0) {
+      statusEl.innerHTML = '<div class="alert alert-warn">No TLEs returned for this source.</div>';
+      return;
+    }
+    statusEl.innerHTML = `<div class="alert alert-info">Loaded <b>${tles.length}</b> TLE(s) from ${escapeHTML(source.label)}. Click one to load it.</div>`;
+    listEl.innerHTML = tles.map((t, i) =>
+      `<div class="tle-stream-item" data-tle-idx="${i}">` +
+        `<div class="tle-item-name">${escapeHTML(t.name)}</div>` +
+        `<div class="tle-item-line">${escapeHTML(t.line1)}</div>` +
+      `</div>`
+    ).join('');
+
+    listEl.querySelectorAll('.tle-stream-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const idx = parseInt(item.dataset.tleIdx, 10);
+        const tle = tles[idx];
+        if (!tle) return;
+        document.getElementById('tle-name').value  = tle.name;
+        document.getElementById('tle-line1').value = tle.line1;
+        document.getElementById('tle-line2').value = tle.line2;
+        UI.showToast(`Loaded: ${tle.name}`, 'ok');
+      });
+    });
+  } catch (err) {
+    statusEl.innerHTML = `<div class="alert alert-warn">Failed to fetch TLEs: ${escapeHTML(err.message)}. This may be due to CORS restrictions or network issues.</div>`;
+  } finally {
+    fetchBtn.disabled = false;
+  }
+}
+
+function escapeHTML(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
 }
 
 function _getTLEInputs() {
