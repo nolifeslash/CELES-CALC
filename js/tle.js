@@ -434,7 +434,8 @@ export function parseTLEBatch(text) {
   let i = 0;
   while (i < lines.length) {
     if (lines[i].startsWith('1 ') && i + 1 < lines.length && lines[i+1].startsWith('2 ')) {
-      tles.push({ name: 'Unknown', line1: lines[i], line2: lines[i+1] });
+      const catNum = lines[i].substring(2, 7).trim();
+      tles.push({ name: catNum ? `NORAD ${catNum}` : 'Unknown', line1: lines[i], line2: lines[i+1] });
       i += 2;
     } else if (i + 2 < lines.length && lines[i+1].startsWith('1 ') && lines[i+2].startsWith('2 ')) {
       tles.push({ name: lines[i], line1: lines[i+1], line2: lines[i+2] });

@@ -614,7 +614,7 @@ async function handleTLEFetch() {
       statusEl.innerHTML = '<div class="alert alert-warn">No TLEs returned for this source.</div>';
       return;
     }
-    statusEl.innerHTML = `<div class="alert alert-info">Loaded <b>${tles.length}</b> TLE(s) from ${source.label}. Click one to load it.</div>`;
+    statusEl.innerHTML = `<div class="alert alert-info">Loaded <b>${tles.length}</b> TLE(s) from ${escapeHTML(source.label)}. Click one to load it.</div>`;
     listEl.innerHTML = tles.map((t, i) =>
       `<div class="tle-stream-item" data-tle-idx="${i}">` +
         `<div class="tle-item-name">${escapeHTML(t.name)}</div>` +

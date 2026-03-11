@@ -214,7 +214,7 @@ function _estimateKmPerPx(canvasW) {
   if (_currentTab === 'orbit-diag') {
     const halfW = canvasW / 2; // half-canvas represents visible radius
     const scaleMap = {
-      'galactic':   1e15 / halfW,               // km — approximate Milky Way half-diameter
+      'galactic':   1e13 / halfW,               // km — approximate Milky Way half-diameter (~50k ly)
       'solar':      6e8  / halfW,               // km — ~4 AU outer visible radius
       'earth-moon': 384400 * 2.5 / halfW,      // km — 2.5× lunar distance fits in half-canvas
       'earth':      80000 / halfW,              // km — GEO altitude + margin

@@ -209,6 +209,16 @@ canvas.viz-canvas {
   display: block;
 }
 
+#vtp-combined.active {
+  display: grid;
+  position: absolute;
+  inset: 0;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  background: #000;
+}
+
 /* No-data placeholder */
 .viz-no-data {
   position: absolute;
