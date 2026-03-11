@@ -1,0 +1,47 @@
+[
+  {
+    "id": "NO-DSN",
+    "name": "NASA Deep Space Network",
+    "type": "governmental",
+    "stationCount": 3,
+    "coverageDescription": "Near-continuous deep-space coverage via three complexes spaced ~120° in longitude (Goldstone, Canberra, Madrid)",
+    "services": ["deep-space-tracking", "telemetry", "telecommand", "VLBI", "radio-science", "navigation"],
+    "website": "https://eyes.nasa.gov/dsn/dsn.html",
+    "sourceRecords": [
+      { "source": "NASA DSN Handbook (810-005)", "date": "2023-09-01", "confidence": 0.96 },
+      { "source": "JPL DSN public site", "date": "2024-03-01", "confidence": 0.92 }
+    ],
+    "confidence": 0.95,
+    "notes": "Operated by JPL; supports all NASA interplanetary and selected partner missions"
+  },
+  {
+    "id": "NO-KSAT",
+    "name": "Kongsberg Satellite Services",
+    "type": "commercial",
+    "stationCount": 25,
+    "coverageDescription": "Global ground-station network with polar, equatorial, and mid-latitude sites; strong Arctic/Antarctic presence",
+    "services": ["LEO-support", "data-downlink", "TT&C-relay", "hosted-payload-ops", "launch-support"],
+    "website": "https://www.ksat.no",
+    "sourceRecords": [
+      { "source": "KSAT corporate overview", "date": "2024-03-01", "confidence": 0.88 },
+      { "source": "KSAT annual report 2023", "date": "2024-02-15", "confidence": 0.85 }
+    ],
+    "confidence": 0.87,
+    "notes": "Major commercial provider; Svalbard and TrollSat sites enable every-orbit polar contact"
+  },
+  {
+    "id": "NO-ESTRACK",
+    "name": "ESA ESTRACK Network",
+    "type": "governmental",
+    "stationCount": 10,
+    "coverageDescription": "European and worldwide stations supporting ESA LEO, MEO, GEO, and deep-space missions",
+    "services": ["telemetry", "telecommand", "ranging", "deep-space-tracking", "LEOP-support", "data-relay"],
+    "website": "https://www.esa.int/Enabling_Support/Operations/ESA_Ground_Stations/ESTRACK_network",
+    "sourceRecords": [
+      { "source": "ESA ESTRACK overview", "date": "2024-01-20", "confidence": 0.9 },
+      { "source": "ESA Ground Facilities brochure", "date": "2023-06-01", "confidence": 0.88 }
+    ],
+    "confidence": 0.9,
+    "notes": "Core stations at Kiruna, Kourou, Cebreros, New Norcia, and Malargüe"
+  }
+]

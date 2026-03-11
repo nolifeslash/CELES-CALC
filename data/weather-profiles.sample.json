@@ -1,0 +1,121 @@
+[
+  {
+    "id": "WX-CLEAR",
+    "name": "clear-sky",
+    "description": "Nominal clear-sky conditions with no precipitation and low humidity",
+    "rainRate_mmh": 0,
+    "humidity_pct": 30,
+    "cloudCover": "none",
+    "attenuationFactors": {
+      "L-band": 0.0,
+      "S-band": 0.01,
+      "C-band": 0.02,
+      "X-band": 0.04,
+      "Ku-band": 0.08,
+      "Ka-band": 0.15,
+      "V-band": 0.4
+    }
+  },
+  {
+    "id": "WX-LRAIN",
+    "name": "light-rain",
+    "description": "Light steady rain typical of temperate maritime climates",
+    "rainRate_mmh": 4,
+    "humidity_pct": 80,
+    "cloudCover": "overcast",
+    "attenuationFactors": {
+      "L-band": 0.0,
+      "S-band": 0.02,
+      "C-band": 0.06,
+      "X-band": 0.3,
+      "Ku-band": 1.2,
+      "Ka-band": 3.5,
+      "V-band": 7.0
+    }
+  },
+  {
+    "id": "WX-HRAIN",
+    "name": "heavy-rain",
+    "description": "Heavy tropical or convective rainfall causing significant attenuation at higher bands",
+    "rainRate_mmh": 25,
+    "humidity_pct": 95,
+    "cloudCover": "overcast-thick",
+    "attenuationFactors": {
+      "L-band": 0.01,
+      "S-band": 0.08,
+      "C-band": 0.4,
+      "X-band": 2.0,
+      "Ku-band": 7.5,
+      "Ka-band": 18.0,
+      "V-band": 35.0
+    }
+  },
+  {
+    "id": "WX-STORM",
+    "name": "storm",
+    "description": "Severe convective storm with extreme rain rates; near-total fade at Ka and above",
+    "rainRate_mmh": 80,
+    "humidity_pct": 100,
+    "cloudCover": "cumulonimbus",
+    "attenuationFactors": {
+      "L-band": 0.03,
+      "S-band": 0.25,
+      "C-band": 1.5,
+      "X-band": 6.0,
+      "Ku-band": 20.0,
+      "Ka-band": 45.0,
+      "V-band": 80.0
+    }
+  },
+  {
+    "id": "WX-POLAR",
+    "name": "polar-dry",
+    "description": "Cold dry polar atmosphere with low water-vapor content; minimal attenuation",
+    "rainRate_mmh": 0,
+    "humidity_pct": 15,
+    "cloudCover": "scattered-ice",
+    "attenuationFactors": {
+      "L-band": 0.0,
+      "S-band": 0.005,
+      "C-band": 0.01,
+      "X-band": 0.02,
+      "Ku-band": 0.05,
+      "Ka-band": 0.1,
+      "V-band": 0.3
+    }
+  },
+  {
+    "id": "WX-MARITIME",
+    "name": "maritime-humid",
+    "description": "Warm humid maritime atmosphere with frequent drizzle and sea-spray effects",
+    "rainRate_mmh": 2,
+    "humidity_pct": 88,
+    "cloudCover": "broken-stratus",
+    "attenuationFactors": {
+      "L-band": 0.0,
+      "S-band": 0.015,
+      "C-band": 0.04,
+      "X-band": 0.2,
+      "Ku-band": 0.8,
+      "Ka-band": 2.5,
+      "V-band": 5.5
+    }
+  },
+  {
+    "id": "WX-DESERT",
+    "name": "desert-dry",
+    "description": "Hot arid desert atmosphere with very low moisture but possible sand/dust effects",
+    "rainRate_mmh": 0,
+    "humidity_pct": 10,
+    "cloudCover": "clear",
+    "attenuationFactors": {
+      "L-band": 0.0,
+      "S-band": 0.005,
+      "C-band": 0.015,
+      "X-band": 0.03,
+      "Ku-band": 0.06,
+      "Ka-band": 0.12,
+      "V-band": 0.35
+    }
+  }
+]
