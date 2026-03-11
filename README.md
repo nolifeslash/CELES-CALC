@@ -20,6 +20,16 @@ CELES-CALC lets you:
 8. **Parse and display tracked objects** — TLE and OMM parsing, simplified two-body propagation (clearly labeled as not SGP4)
 9. **See the scenario graphically** in the linked Visualizer window with a **4-view engineering layout**
 10. **Save/load/share scenarios** as JSON files using a **normalized scenario contract**
+11. **RF link budget analysis** — per-hop link budget with FSPL, atmospheric losses, C/N₀, Eb/N₀, margin, and throughput estimates
+12. **Ground station comparison & optimization** — rank and select ground stations by weighted score across margin, throughput, latency, resilience
+13. **Interference & jamming assessment** — simplified contested-RF analysis with J/S, J/N, degradation state, and mitigation comparison
+14. **SIGINT opportunity assessment** — geometry-plus-signal-strength collection opportunity scoring (educational model only)
+15. **Launch-to-orbit feasibility** — launch azimuth, Earth rotation benefit, delta-V estimates, vehicle suitability
+16. **Orbit-to-orbit transfer planning** — Hohmann, bi-elliptic, plane change, and combined transfer comparison
+17. **Phasing & RPO planning** — phasing orbit calculation, rendezvous opportunity, servicing mission planning
+18. **Lunar transfer planning** — TLI/LOI delta-V estimates, transfer duration, mission leg sequencing
+19. **Mission delta-V budgets** — structured budget builder with standard mission presets
+20. **Launch window search** — generic window search engine for launch, phasing, and transfer opportunities
 
 ---
 
@@ -54,7 +64,22 @@ The Calculator is the **authoritative owner** of the scenario. Every calculation
   settings,               // { precision, units, darkMode, cellSize_deg }
   notes,
   warnings,               // runtime accuracy warnings
-  precisionLabels         // per-result precision tier labels
+  precisionLabels,        // per-result precision tier labels
+  rfScenario,             // RF scenario configuration
+  links,                  // [] link budget results
+  networkRoutes,          // [] route comparison results
+  interferenceResults,    // interference/jamming assessments
+  jammingResults,         // jamming-specific results
+  sigintResults,          // SIGINT opportunity assessments
+  groundStationRecommendations, // [] ranked station list
+  launchScenario,         // launch configuration
+  launchWindows,          // [] launch window candidates
+  launchSolutions,        // [] ranked launch solutions
+  rpoPlans,               // [] RPO/phasing plans
+  transferPlans,          // [] transfer plan options
+  missionLegs,            // [] mission leg sequence
+  deltaVBudget,           // structured delta-V budget
+  infrastructureDataRefs  // references to infrastructure data
 }
 ```
 
@@ -123,6 +148,68 @@ The **classic views** (Earth Map, Moon Map, Orbit Diagram, Geometry View, Combin
 ## Tracked Objects vs. Generic Orbit Math
 
 These two pipelines are **clearly separated** in both code and UI.
+
+---
+
+## RF / SATCOM / SIGINT (Expansion 1)
+
+The SATCOM expansion adds practical RF link planning, ground station optimization, interference analysis, and SIGINT opportunity assessment.
+
+| Feature | Module | Precision |
+|---------|--------|-----------|
+| Link budget (per-hop) | `js/link-budget.js` | Standard engineering approximation |
+| Atmospheric loss presets | `js/atmosphere.js` | Engineering approximation (not ITU-R) |
+| Antenna gain/beamwidth | `js/antennas.js` | Standard engineering approximation |
+| Ground station ranking | `js/groundstations.js` | Simplified scoring model |
+| Interference/jamming | `js/interference.js` | Simplified educational model |
+| Route comparison | `js/satcom-network.js` | Engineering approximation |
+| Service quality | `js/quality.js` | Simplified classification |
+| SIGINT opportunity | `js/sigint.js` | Simplified educational model |
+
+Seven service profiles and seven weather/climate presets are defined in `data/service-profiles.sample.json` and `data/weather-profiles.sample.json`.
+
+> **Accuracy note:** The RF models use simplified engineering approximations. They do NOT implement full ITU-R propagation models. The SIGINT module is educational only — not intelligence-grade.
+
+---
+
+## Launch / Transfer / RPO (Expansion 2)
+
+The launch expansion adds mission access planning, orbit transfer calculations, RPO planning, and lunar transfer estimation.
+
+| Feature | Module | Precision |
+|---------|--------|-----------|
+| Launch site access | `js/launch-sites.js` | Standard engineering approximation |
+| Vehicle suitability | `js/launch-vehicles.js` | Simplified classification |
+| Launch-to-orbit | `js/launch-planner.js` | Simplified educational approximation |
+| Window search | `js/window-search.js` | Standard engineering approximation |
+| Orbit transfer | `js/transfer-planner.js` | Two-body (Keplerian) |
+| Phasing / RPO | `js/phasing.js` | Simplified educational approximation |
+| Delta-V budget | `js/delta-v-budget.js` | Standard engineering approximation |
+| Mission sequencing | `js/mission-sequencer.js` | Planning framework |
+| Lunar transfer | `js/lunar-transfer.js` | Simplified patched-two-body |
+
+Stub architecture for future expansion: `js/lambert.js`, `js/porkchop.js`, `js/interplanetary.js`.
+
+> **Accuracy note:** Launch calculations are mission-planning access tools, NOT full dynamics solvers. Lunar transfer uses simplified patched-two-body, not full cislunar optimization.
+
+---
+
+## Data Infrastructure
+
+Sample infrastructure data files are in the `data/` directory:
+
+| File | Contents |
+|------|----------|
+| `data/launch-sites.sample.json` | 5 launch sites with coordinates, capabilities |
+| `data/ground-stations.sample.json` | 5 ground stations with antenna specs |
+| `data/ttc-stations.sample.json` | 3 TT&C stations |
+| `data/network-operators.sample.json` | 3 network operators |
+| `data/launch-vehicles.sample.json` | 5 vehicle profiles (small → tug) |
+| `data/bands.sample.json` | 7 RF band definitions |
+| `data/service-profiles.sample.json` | 7 service profiles |
+| `data/weather-profiles.sample.json` | 7 weather presets |
+
+Every record supports `sourceRecords[]` (provenance), `confidence` (0–1), `notes`, and `tags[]`.
 
 ### Pipeline 1 — Generic Orbit Math (Space/Orbital tab)
 - COE ↔ Cartesian state vectors
@@ -273,7 +360,29 @@ CELES-CALC/
     ├── renderer-top.js  # Top view renderer (X-Y)
     ├── renderer-side-a.js # Side A renderer (Y-Z)
     ├── renderer-side-b.js # Side B renderer (X-Z)
-    └── renderer-3d.js  # 3D perspective renderer
+    ├── renderer-3d.js  # 3D perspective renderer
+    ├── rf-constants.js # RF band definitions & modulation presets
+    ├── link-budget.js  # Per-hop link budget engine
+    ├── atmosphere.js   # Atmospheric/propagation loss presets
+    ├── antennas.js     # Antenna models & gain calculations
+    ├── interference.js # Interference & jamming assessment
+    ├── quality.js      # Service quality translation
+    ├── satcom-network.js # Route comparison (direct/relay/ISL)
+    ├── groundstations.js # Ground station ranking & optimization
+    ├── sigint.js       # SIGINT opportunity assessor
+    ├── optimizer.js    # Generic weighted optimizer
+    ├── launch-sites.js # Launch site data & access logic
+    ├── launch-vehicles.js # Vehicle profiles & suitability
+    ├── launch-planner.js  # Launch-to-orbit feasibility
+    ├── window-search.js   # Generic window search engine
+    ├── transfer-planner.js # Orbit-to-orbit transfer planning
+    ├── phasing.js      # Phasing & RPO planning
+    ├── delta-v-budget.js # Mission delta-V budget builder
+    ├── mission-sequencer.js # Mission leg sequencing
+    ├── lunar-transfer.js # Earth-to-Moon transfer MVP
+    ├── lambert.js      # (stub) Lambert orbit solver
+    ├── porkchop.js     # (stub) Porkchop plot generator
+    └── interplanetary.js # (stub) Interplanetary transfer
 ```
 
 ---
