@@ -28,7 +28,7 @@
   <button class="tab-btn" data-tab="earth">            <span class="tab-icon">🌍</span> Earth Coords</button>
   <button class="tab-btn" data-tab="moon">             <span class="tab-icon">🌕</span> Moon Coords</button>
   <button class="tab-btn" data-tab="orbit">            <span class="tab-icon">🛸</span> Space/Orbital</button>
-  <button class="tab-btn" data-tab="tle">              <span class="tab-icon">📡</span> TLE Tools</button>
+  <button class="tab-btn" data-tab="tle">              <span class="tab-icon">📡</span> Tracked Objects</button>
   <button class="tab-btn" data-tab="visibility">       <span class="tab-icon">👁</span> Visibility</button>
   <button class="tab-btn" data-tab="distance">         <span class="tab-icon">📏</span> Distance</button>
 </nav>
@@ -545,13 +545,20 @@
        TLE TOOLS TAB
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-tle" class="tab-panel">
-    <div class="section-title">📡 TLE Tools</div>
+    <div class="section-title">📡 Tracked Object Tools</div>
+    <div class="alert alert-info" style="margin:0 0 0.5rem 0;font-size:0.8rem">
+      <strong>⚠ Tracked-Object Pipeline</strong> — These tools parse TLE/OMM data for Earth-orbiting tracked objects.
+      Propagation uses <em>simplified two-body (Keplerian)</em> math — <strong>not SGP4</strong>.
+      Results are approximate and should not be used for operational tracking.
+      <br><span style="opacity:0.8">For generic orbital mechanics (COE, Hohmann, vis-viva), use the Space/Orbital tab.</span>
+    </div>
     <details class="tool-instructions">
-      <summary>ℹ️ Instructions — TLE Tools</summary>
+      <summary>ℹ️ Instructions — Tracked Object Tools</summary>
       <ul>
         <li><strong>Parse TLE:</strong> Input: two-line element set (line 1 and line 2). Output: orbital elements, epoch, period</li>
-        <li><strong>Propagate:</strong> Input: TLE + optional UTC time. Output: lat/lon/alt, ECI position (simplified 2-body, not SGP4)</li>
-        <li><strong>Stream:</strong> Fetch live TLE data from CelesTrak. Select a source, click Fetch, then click a result to load it</li>
+        <li><strong>Parse OMM:</strong> Input: OMM JSON record (CelesTrak GP format). Output: same orbital elements</li>
+        <li><strong>Propagate:</strong> Input: TLE/OMM + optional UTC time. Output: lat/lon/alt, ECI position (simplified 2-body, not SGP4)</li>
+        <li><strong>Stream:</strong> Fetch live TLE/OMM data from CelesTrak. Select a source, click Fetch, then click a result to load it</li>
       </ul>
     </details>
     <div class="two-col">
@@ -604,9 +611,19 @@
         </div>
         <div id="tle-stream-status"></div>
         <div id="tle-stream-results" class="tle-stream-list"></div>
+        <hr class="divider"/>
+        <div class="card-title">📋 OMM (JSON) Input</div>
+        <div class="form-group">
+          <label>OMM JSON <span class="hint">paste a single OMM record or array</span></label>
+          <textarea id="omm-json" rows="4" class="tle-input" placeholder='{"OBJECT_NAME":"ISS","MEAN_MOTION":15.5,...}'></textarea>
+        </div>
+        <div class="btn-row" style="border:none;padding-top:0;margin-top:0">
+          <button class="btn btn-secondary btn-sm" id="btn-omm-parse">Parse OMM ▶</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">Results</div>
+        <div id="tle-model-badge" class="alert alert-warn" style="display:none;margin-bottom:0.5rem;font-size:0.75rem"></div>
         <div id="tle-results"></div>
       </div>
     </div>

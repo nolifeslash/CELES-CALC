@@ -7,7 +7,7 @@
  * results for a single calculation session. It can be serialised to / from
  * JSON and shared across browser tabs via sync.js.
  *
- * Schema version: '1.0'
+ * Schema version: '2.0'
  */
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -16,12 +16,13 @@
  * Create a new, empty scenario with all required fields initialised to their
  * zero / default states.
  *
- * @returns {ScenarioObject} A fresh scenario with version '1.0'.
+ * @returns {ScenarioObject} A fresh scenario with version '2.0'.
  */
 export function createEmptyScenario() {
   return {
-    version:   '1.0',
+    version:   '2.0',
     timestamp: new Date().toISOString(),
+    sourceModule: '',
 
     timeInput: {
       utc:  '',
@@ -68,12 +69,14 @@ export function createEmptyScenario() {
     coordinateInputs:     {},
     convertedCoordinates: {},
 
-    visibilityResults:    [],
     illuminationResults:  [],
+    visibilityResults:    [],
     orbitResults:         {},
+    trackedObjectResults: [],
     distanceResults:      {},
     gridResults:          {},
-    tleResults:           {},
+    selectedObjects:      [],
+    layers:               {},
 
     settings: {
       precision:    'standard',   // 'standard' | 'high'
@@ -82,7 +85,9 @@ export function createEmptyScenario() {
       cellSize_deg: 5,
     },
 
-    notes: '',
+    notes:           '',
+    warnings:        [],
+    precisionLabels: {},
   };
 }
 
@@ -97,6 +102,11 @@ export function createEmptyScenario() {
  * @param {object[]}           [inputs.targets]   - Array of target descriptors.
  * @param {object}             [inputs.settings]  - Settings overrides.
  * @param {string}             [inputs.notes]     - Free-text notes.
+ * @param {string}             [inputs.sourceModule]      - Which module last updated scenario.
+ * @param {string[]}           [inputs.selectedObjects]   - Shared selection state for visualizer.
+ * @param {object}             [inputs.layers]            - Layer toggle state.
+ * @param {string[]}           [inputs.warnings]          - Runtime warnings/accuracy notes.
+ * @param {object}             [inputs.precisionLabels]   - Per-result precision tier labels.
  * @returns {ScenarioObject} Populated scenario object.
  */
 export function buildScenarioState(inputs = {}) {
@@ -171,6 +181,23 @@ export function buildScenarioState(inputs = {}) {
     scenario.notes = inputs.notes;
   }
 
+  // ── New v2.0 fields ───────────────────────────────────────────────────────
+  if (typeof inputs.sourceModule === 'string') {
+    scenario.sourceModule = inputs.sourceModule;
+  }
+  if (Array.isArray(inputs.selectedObjects)) {
+    scenario.selectedObjects = [...inputs.selectedObjects];
+  }
+  if (inputs.layers && typeof inputs.layers === 'object') {
+    scenario.layers = { ...inputs.layers };
+  }
+  if (Array.isArray(inputs.warnings)) {
+    scenario.warnings = [...inputs.warnings];
+  }
+  if (inputs.precisionLabels && typeof inputs.precisionLabels === 'object') {
+    scenario.precisionLabels = { ...inputs.precisionLabels };
+  }
+
   return scenario;
 }
 
@@ -212,6 +239,44 @@ function _normaliseTarget(tgt) {
   };
 }
 
+// ─── Migration ────────────────────────────────────────────────────────────────
+
+/**
+ * Migrate a scenario object to version '2.0'.
+ *
+ * - If version is '1.0' or missing, upgrades to '2.0'.
+ * - Moves `tleResults` → `trackedObjectResults` when present.
+ * - Fills any missing v2.0 fields with their defaults.
+ * - Already-v2.0 scenarios are returned with defaults filled in for any
+ *   absent keys (defensive back-fill).
+ *
+ * @param {object} scenario - Scenario object (any version).
+ * @returns {object} A valid v2.0 scenario (new object; input is not mutated).
+ */
+export function migrateScenario(scenario) {
+  const base = createEmptyScenario();
+  const migrated = mergeScenarioUpdates(base, scenario);
+
+  // ── tleResults → trackedObjectResults ──────────────────────────────────────
+  if (scenario.tleResults != null && scenario.tleResults !== undefined) {
+    const tleData = scenario.tleResults;
+    if (Array.isArray(tleData)) {
+      migrated.trackedObjectResults = tleData;
+    } else if (tleData && typeof tleData === 'object') {
+      migrated.trackedObjectResults = Object.values(tleData);
+    }
+    // Non-object/non-array tleData (e.g. string, number) is silently dropped
+    delete migrated.tleResults;
+  } else if (scenario.tleResults === null) {
+    delete migrated.tleResults;
+  }
+
+  // Stamp version
+  migrated.version = '2.0';
+
+  return migrated;
+}
+
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 const VALID_OBSERVER_TYPES = ['earth_surface', 'moon_surface', 'spacecraft'];
@@ -233,8 +298,13 @@ export function validateScenario(scenario) {
     return { valid: false, errors: ['Scenario must be an object.'] };
   }
 
-  if (scenario.version !== '1.0') {
-    errors.push(`Unsupported scenario version: "${scenario.version}". Expected "1.0".`);
+  if (scenario.version !== '2.0' && scenario.version !== '1.0') {
+    errors.push(`Unsupported scenario version: "${scenario.version}". Expected "2.0".`);
+  }
+  if (scenario.version === '1.0') {
+    errors.push('Scenario uses version "1.0". Consider migrating to "2.0" via migrateScenario().');
+  } else if (!scenario.version) {
+    errors.push('Scenario version is missing. Consider migrating to "2.0" via migrateScenario().');
   }
 
   // Time
@@ -332,7 +402,8 @@ export function scenarioToJSON(scenario) {
 export function scenarioFromJSON(jsonStr) {
   const parsed = JSON.parse(jsonStr);
   const base   = createEmptyScenario();
-  return mergeScenarioUpdates(base, parsed);
+  const merged = mergeScenarioUpdates(base, parsed);
+  return migrateScenario(merged);
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

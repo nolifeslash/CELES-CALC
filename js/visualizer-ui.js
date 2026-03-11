@@ -5,9 +5,17 @@ import { subscribeScenarioState, getConnectionStatus, onConnectionStatusChange,
          loadScenarioFromStorage, pauseSync, resumeSync } from './sync.js';
 import { drawEarthMap, drawMoonMap, drawOrbitDiagram, drawGeometryView,
          drawMeasurements } from './visuals.js';
+import { renderTopView } from './renderer-top.js';
+import { renderSideAView } from './renderer-side-a.js';
+import { renderSideBView } from './renderer-side-b.js';
+import { render3DView } from './renderer-3d.js';
+import { createViewState, resetView, fitToObjects, getViewport } from './camera.js';
+import { createInteractionState, selectObject, hoverObject, clearSelection, hitTest, onInteractionChange } from './interaction.js';
+import { createLayerState, setLayer, isLayerVisible, onLayerChange, DEFAULT_LAYERS } from './layers.js';
+import { extractSceneObjects } from './renderer-core.js';
 
 let _scenario = null;
-let _currentTab = 'earth-map';
+let _currentTab = 'fourview';
 let _layers = {};
 let _syncUnsub = null;
 let _statusUnsub = null;
@@ -24,6 +32,23 @@ let _measurements = [];
 /** Points collected for the current in-progress measurement */
 let _pendingPoints = [];
 
+/** 4-view camera states, one per pane */
+let _viewStates = {
+  top: null, sideA: null, sideB: null, '3d': null
+};
+
+/** Shared interaction state for the 4-view mode */
+let _interactionState = null;
+
+/** Shared layer state for the 4-view mode */
+let _layerState = null;
+
+/** Currently maximized pane id, or null */
+let _maximizedPane = null;
+
+/** Per-pane projected objects for hit-testing */
+let _projectedObjects = {};
+
 /**
  * Zoom level presets with scale metadata.
  * Each entry describes what the orbit diagram should display at that zoom.
@@ -38,12 +63,34 @@ export const ZOOM_LEVELS = {
 };
 
 export function initVisualizer() {
-  _layers = loadLayerState();
+  _layers = _loadLayerPrefs();
+
+  // Initialize 4-view states
+  _viewStates.top   = createViewState('top');
+  _viewStates.sideA = createViewState('sideA');
+  _viewStates.sideB = createViewState('sideB');
+  _viewStates['3d'] = createViewState('3d');
+  _interactionState = createInteractionState();
+  _layerState       = createLayerState(_loadLayerPrefs());
+
+  // Re-render on interaction changes and update inspector
+  onInteractionChange(_interactionState, () => {
+    renderFourViews();
+    updateObjectInspector();
+  });
+
+  // Re-render on layer changes
+  onLayerChange(_layerState, () => {
+    if (_currentTab === 'fourview') renderFourViews();
+  });
+
   setupVisualizerTabs();
   setupLayerToggles();
   setupViewControls();
   setupZoomPresets();
   setupMeasuringTools();
+  setupMaximizeButtons();
+  setupFourViewInteraction();
   handleVisualizerResize();
   window.addEventListener('resize', handleVisualizerResize);
   _syncUnsub = subscribeScenarioState(scenario => {
@@ -93,15 +140,21 @@ export function setupLayerToggles() {
     _layers[id] = el.checked;
     el.addEventListener('change', () => {
       _layers[id] = el.checked;
-      saveLayerState();
+      _saveLayerPrefs();
+      // Sync with 4-view layer state
+      if (_layerState) setLayer(_layerState, id, el.checked);
       renderCurrentTab();
     });
   }
 }
 
 export function setupViewControls() {
-  document.getElementById('viz-fit')?.addEventListener('click',        () => renderCurrentTab());
-  document.getElementById('viz-reset-view')?.addEventListener('click', () => renderCurrentTab());
+  document.getElementById('viz-fit')?.addEventListener('click', () => {
+    if (_currentTab === 'fourview') { fitAllViews(); } else { renderCurrentTab(); }
+  });
+  document.getElementById('viz-reset-view')?.addEventListener('click', () => {
+    if (_currentTab === 'fourview') { resetAllViews(); } else { renderCurrentTab(); }
+  });
   document.getElementById('viz-zoom-in')?.addEventListener('click',    () => renderCurrentTab());
   document.getElementById('viz-zoom-out')?.addEventListener('click',   () => renderCurrentTab());
   document.getElementById('viz-center-obs')?.addEventListener('click', () => renderCurrentTab());
@@ -237,15 +290,31 @@ function _setReadout(text) {
 export function handleVisualizerResize() {
   const area = document.getElementById('viz-canvas-area');
   if (!area) return;
-  const canvases = area.querySelectorAll('canvas');
-  canvases.forEach(c => {
+  // Resize classic-mode canvases
+  const classicCanvases = area.querySelectorAll('.viz-tab-panel:not(#vtp-fourview) canvas');
+  classicCanvases.forEach(c => {
     c.width  = area.clientWidth  || 800;
     c.height = area.clientHeight || 500;
   });
+  // Resize 4-view canvases to match their pane containers
+  const fourViewCanvases = ['canvas-top', 'canvas-sideA', 'canvas-sideB', 'canvas-3d'];
+  for (const id of fourViewCanvases) {
+    const c = document.getElementById(id);
+    if (!c) continue;
+    const pane = c.parentElement;
+    if (pane) {
+      c.width  = pane.clientWidth  || 400;
+      c.height = pane.clientHeight || 300;
+    }
+  }
   renderCurrentTab();
 }
 
 export function renderCurrentTab() {
+  if (_currentTab === 'fourview') {
+    renderFourViews();
+    return;
+  }
   if (!_scenario && _currentTab !== 'combined') {
     _drawPlaceholder(_currentTab);
     return;
@@ -314,9 +383,168 @@ function _drawPlaceholder(tabId) {
   ctx.textAlign = 'left';
 }
 
-function loadLayerState() {
+function _loadLayerPrefs() {
   try { return JSON.parse(localStorage.getItem('celes-layers') || '{}'); } catch { return {}; }
 }
-function saveLayerState() {
+function _saveLayerPrefs() {
   localStorage.setItem('celes-layers', JSON.stringify(_layers));
+}
+
+// ─── 4-View Engineering Functions ─────────────────────────────────────────────
+
+/**
+ * Render all 4 panes simultaneously.
+ */
+function renderFourViews() {
+  if (!_scenario) {
+    ['canvas-top','canvas-sideA','canvas-sideB','canvas-3d'].forEach(id => _drawPlaceholder4View(id));
+    return;
+  }
+  _projectedObjects.top = renderTopView(
+    document.getElementById('canvas-top'), _scenario, _viewStates.top, _layerState, _interactionState
+  );
+  _projectedObjects.sideA = renderSideAView(
+    document.getElementById('canvas-sideA'), _scenario, _viewStates.sideA, _layerState, _interactionState
+  );
+  _projectedObjects.sideB = renderSideBView(
+    document.getElementById('canvas-sideB'), _scenario, _viewStates.sideB, _layerState, _interactionState
+  );
+  _projectedObjects['3d'] = render3DView(
+    document.getElementById('canvas-3d'), _scenario, _viewStates['3d'], _layerState, _interactionState
+  );
+}
+
+/**
+ * Draw a placeholder on a 4-view canvas when no scenario is loaded.
+ */
+function _drawPlaceholder4View(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.width || 400;
+  const h = canvas.clientHeight || canvas.height || 300;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width  = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  ctx.fillStyle = dark ? '#0d1117' : '#f0f2f5';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = dark ? '#484f58' : '#9198a1';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Waiting for scenario…', w / 2, h / 2);
+  ctx.textAlign = 'left';
+}
+
+/**
+ * Wire click events on 4-view canvases for object selection.
+ */
+function setupFourViewInteraction() {
+  const panes = ['top', 'sideA', 'sideB', '3d'];
+  for (const pane of panes) {
+    const canvas = document.getElementById(`canvas-${pane}`);
+    if (!canvas) continue;
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const objects = _projectedObjects[pane]?.projectedObjects ?? [];
+      const hitId = hitTest(objects, px, py, 15);
+      if (hitId) {
+        selectObject(_interactionState, hitId);
+      } else {
+        clearSelection(_interactionState);
+      }
+    });
+  }
+}
+
+/**
+ * Wire maximize/restore buttons on 4-view panes.
+ */
+function setupMaximizeButtons() {
+  document.querySelectorAll('.pane-maximize').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pane = btn.dataset.pane;
+      const grid = document.getElementById('fourview-grid');
+      if (_maximizedPane === pane) {
+        _maximizedPane = null;
+        grid.classList.remove('maximized');
+        grid.querySelectorAll('.fourview-pane').forEach(p => p.classList.remove('maximized-pane'));
+        btn.textContent = '⤢';
+      } else {
+        // Restore label on previously maximized pane button
+        if (_maximizedPane) {
+          const prevBtn = grid.querySelector(`.pane-maximize[data-pane="${_maximizedPane}"]`);
+          if (prevBtn) prevBtn.textContent = '⤢';
+        }
+        _maximizedPane = pane;
+        grid.classList.add('maximized');
+        grid.querySelectorAll('.fourview-pane').forEach(p => {
+          p.classList.toggle('maximized-pane', p.dataset.pane === pane);
+        });
+        btn.textContent = '⤡';
+      }
+      handleVisualizerResize();
+    });
+  });
+}
+
+/**
+ * Fit all 4-view panes to show all objects.
+ */
+export function fitAllViews() {
+  if (!_scenario) return;
+  const objects = extractSceneObjects(_scenario);
+  const points = objects.map(o => ({ x: o.x, y: o.y, z: o.z }));
+  for (const key of Object.keys(_viewStates)) {
+    const canvas = document.getElementById(`canvas-${key}`);
+    if (canvas) {
+      fitToObjects(_viewStates[key], points, canvas.clientWidth || 400, canvas.clientHeight || 300, 0.1);
+    }
+  }
+  renderFourViews();
+}
+
+/**
+ * Reset all 4-view panes to defaults.
+ */
+export function resetAllViews() {
+  for (const key of Object.keys(_viewStates)) {
+    if (_viewStates[key]) resetView(_viewStates[key]);
+  }
+  renderFourViews();
+}
+
+/**
+ * Update the sidebar object inspector with the selected object's details.
+ */
+function updateObjectInspector() {
+  const el = document.getElementById('viz-object-inspector');
+  if (!el) return;
+  const selId = _interactionState?.selectedId;
+  if (!selId || !_scenario) {
+    el.textContent = 'No selection';
+    return;
+  }
+  const objects = extractSceneObjects(_scenario);
+  const obj = objects.find(o => o.id === selId);
+  if (!obj) {
+    el.textContent = 'No selection';
+    return;
+  }
+  const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = [`<b>${esc(obj.label || obj.id)}</b>`];
+  lines.push(`Type: ${esc(obj.type)}`);
+  lines.push(`X: ${obj.x.toFixed(1)} km`);
+  lines.push(`Y: ${obj.y.toFixed(1)} km`);
+  lines.push(`Z: ${obj.z.toFixed(1)} km`);
+  if (obj.radius_km) lines.push(`Radius: ${obj.radius_km.toFixed(1)} km`);
+  el.innerHTML = lines.join('<br>');
 }

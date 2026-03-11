@@ -11,6 +11,7 @@ import * as Grids      from './js/grids.js';
 import * as Scenario   from './js/scenario.js';
 import * as Sync       from './js/sync.js';
 import * as UI         from './js/ui.js';
+import * as OMM        from './js/omm.js';
 import { SAMPLE_TLES, SAMPLE_SCENARIOS, PRESET_LOCATIONS } from './js/sample-data.js';
 import { TLE_SOURCES, fetchTLEFromURL } from './js/tle.js';
 import { GM_EARTH, GM_MOON, R_EARTH_MEAN } from './js/constants.js';
@@ -581,6 +582,7 @@ function calcPlaneChange() {
 function wireTLETab() {
   document.getElementById('btn-tle-parse')?.addEventListener('click',     calcTLEParse);
   document.getElementById('btn-tle-propagate')?.addEventListener('click', calcTLEPropagate);
+  document.getElementById('btn-omm-parse')?.addEventListener('click',     calcOMMParse);
   document.querySelectorAll('[data-sample-tle]').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SAMPLE_TLES[btn.dataset.sampleTle];
@@ -653,6 +655,13 @@ function _getTLEInputs() {
   };
 }
 
+function _showModelBadge(text) {
+  const el = document.getElementById('tle-model-badge');
+  if (!el) return;
+  if (text) { el.textContent = text; el.style.display = 'block'; }
+  else { el.style.display = 'none'; }
+}
+
 function calcTLEParse() {
   const { line1, line2 } = _getTLEInputs();
   if (!line1 || !line2) { UI.renderAlert('tle-results','Enter TLE Line 1 and Line 2','warn'); return; }
@@ -660,7 +669,9 @@ function calcTLEParse() {
   if (!val.valid) { UI.renderAlert('tle-results', 'TLE validation errors: ' + val.errors.join('; '), 'err'); return; }
   const parsed = TLE.parseTLE(line1, line2);
   const kep    = TLE.tleToKeplerian(parsed);
+  _showModelBadge('⚠ Source: TLE | Model: Keplerian two-body | NOT SGP4 — approximate educational interpretation');
   UI.renderResultCards('tle-results', [
+    { label: 'Source Type',      value: 'TLE', variant: 'hl' },
     { label: 'Sat Number',       value: parsed.satNumber },
     { label: 'Epoch JD',         value: parsed.epochJD,         unit: 'JD' },
     { label: 'Inclination',      value: parsed.inclination_deg, unit: '°' },
@@ -669,11 +680,19 @@ function calcTLEParse() {
     { label: 'Arg. Perigee',     value: parsed.argPerigee_deg,  unit: '°' },
     { label: 'Mean Anomaly',     value: parsed.meanAnomaly_deg, unit: '°' },
     { label: 'Mean Motion',      value: parsed.meanMotion_revPerDay, unit: 'rev/day' },
+    { label: 'BSTAR',            value: parsed.bstar },
     { label: 'Semi-major axis',  value: kep.a/1e3, unit: 'km' },
     { label: 'Period',           value: kep.T_s/60, unit: 'min' },
-    { label: 'Valid',            value: 'YES', variant: 'ok' },
-  ], 'TLE Parsed');
-  _patchScenario({ tleResults: { ...parsed, ...kep } });
+    { label: 'Propagation',      value: 'Keplerian (two-body) — not SGP4' },
+  ], 'TLE Parsed — Tracked Object');
+  _patchScenario({
+    trackedObjectResults: [{
+      sourceType: 'TLE', propagationModel: 'Keplerian (two-body)',
+      modelBadge: '⚠ Approximate TLE interpretation — not SGP4',
+      ...parsed, ...kep,
+    }],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+  });
 }
 
 function calcTLEPropagate() {
@@ -683,17 +702,65 @@ function calcTLEPropagate() {
   const utcStr = document.getElementById('tle-epoch')?.value?.trim();
   const jd = utcStr ? Time.utcToJulianDate(utcStr) : parsed.epochJD;
   const r  = TLE.propagateOrbitSimple(parsed, jd);
+  _showModelBadge('⚠ Source: TLE | Model: Keplerian two-body propagation | NOT SGP4 — errors grow ~km/day in LEO');
   UI.renderResultCards('tle-results', [
-    { label: 'Latitude',   value: r.lat_deg, unit: '°' },
-    { label: 'Longitude',  value: r.lon_deg, unit: '°' },
-    { label: 'Altitude',   value: r.alt_km,  unit: 'km', variant: 'hl' },
-    { label: 'X (ECI)',    value: r.x_eci,   unit: 'm' },
-    { label: 'Y (ECI)',    value: r.y_eci,   unit: 'm' },
-    { label: 'Z (ECI)',    value: r.z_eci,   unit: 'm' },
+    { label: 'Source Type',  value: 'TLE', variant: 'hl' },
+    { label: 'Model',        value: 'Keplerian (two-body) — NOT SGP4' },
+    { label: 'Latitude',     value: r.lat_deg, unit: '°' },
+    { label: 'Longitude',    value: r.lon_deg, unit: '°' },
+    { label: 'Altitude',     value: r.alt_km,  unit: 'km', variant: 'hl' },
+    { label: 'X (ECI)',      value: r.x_eci,   unit: 'm' },
+    { label: 'Y (ECI)',      value: r.y_eci,   unit: 'm' },
+    { label: 'Z (ECI)',      value: r.z_eci,   unit: 'm' },
     { label: 'True Anomaly', value: r.trueAnomaly_deg, unit: '°' },
-    { label: 'Note',       value: r.note ?? '—' },
-  ], 'TLE Propagated Position');
-  _patchScenario({ tleResults: { lat_deg: r.lat_deg, lon_deg: r.lon_deg, alt_km: r.alt_km } });
+  ], 'TLE Propagated — Tracked Object');
+  _patchScenario({
+    trackedObjectResults: [{
+      sourceType: 'TLE', propagationModel: 'Keplerian (two-body)',
+      modelBadge: '⚠ Simplified two-body propagation — not SGP4',
+      lat_deg: r.lat_deg, lon_deg: r.lon_deg, alt_km: r.alt_km,
+      x_eci: r.x_eci, y_eci: r.y_eci, z_eci: r.z_eci,
+    }],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+  });
+}
+
+function calcOMMParse() {
+  const raw = document.getElementById('omm-json')?.value?.trim();
+  if (!raw) { UI.renderAlert('tle-results', 'Paste OMM JSON data', 'warn'); return; }
+  let data;
+  try { data = JSON.parse(raw); } catch (e) { UI.renderAlert('tle-results', 'Invalid JSON: ' + e.message, 'err'); return; }
+
+  // Support single object or array
+  const records = Array.isArray(data) ? data : [data];
+  if (records.length === 0) { UI.renderAlert('tle-results', 'No OMM records found', 'warn'); return; }
+
+  const first = records[0];
+  const val = OMM.validateOMM(first);
+  if (!val.valid) { UI.renderAlert('tle-results', 'OMM validation errors: ' + val.errors.join('; '), 'err'); return; }
+
+  const parsed = OMM.parseOMMJSON(first);
+  _showModelBadge('⚠ Source: OMM | Model: Keplerian two-body | NOT SGP4 — approximate educational interpretation');
+  UI.renderResultCards('tle-results', [
+    { label: 'Source Type',      value: 'OMM', variant: 'hl' },
+    { label: 'Object Name',     value: parsed.objectName },
+    { label: 'NORAD ID',        value: parsed.noradCatId },
+    { label: 'Epoch',           value: parsed.epoch },
+    { label: 'Inclination',     value: parsed.inclination_deg, unit: '°' },
+    { label: 'RAAN',            value: parsed.raan_deg,        unit: '°' },
+    { label: 'Eccentricity',    value: parsed.eccentricity },
+    { label: 'Arg. Perigee',    value: parsed.argPerigee_deg,  unit: '°' },
+    { label: 'Mean Anomaly',    value: parsed.meanAnomaly_deg, unit: '°' },
+    { label: 'Mean Motion',     value: parsed.meanMotion_revPerDay, unit: 'rev/day' },
+    { label: 'BSTAR',           value: parsed.bstar },
+    { label: 'Semi-major axis', value: parsed.semiMajorAxis_km, unit: 'km' },
+    { label: 'Period',          value: parsed.period_min, unit: 'min' },
+    { label: 'Propagation',     value: 'Keplerian (two-body) — not SGP4' },
+  ], 'OMM Parsed — Tracked Object');
+  _patchScenario({
+    trackedObjectResults: [parsed],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+  });
 }
 
 /* ================================================================
@@ -880,9 +947,14 @@ export function runAcceptanceTests() {
       const v = TLE.validateTLE(s.line1, s.line2);
       return v.valid === true;
     }},
-    { name: 'Scenario: createEmptyScenario has version', fn: () => {
+    { name: 'Scenario: createEmptyScenario has version 2.0', fn: () => {
       const s = Scenario.createEmptyScenario();
-      return s.version === '1.0';
+      return s.version === '2.0';
+    }},
+    { name: 'Scenario: v1.0 migrates to v2.0', fn: () => {
+      const old = { version: '1.0', tleResults: { satNumber: 25544 }, timeInput: { jd: 2451545, utc: '', unix: 0 } };
+      const migrated = Scenario.migrateScenario(old);
+      return migrated.version === '2.0' && Array.isArray(migrated.trackedObjectResults);
     }},
   ];
 

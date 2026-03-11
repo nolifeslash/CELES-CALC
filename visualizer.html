@@ -27,7 +27,8 @@
 
 <!-- ── TAB BAR ────────────────────────────────────────────── -->
 <nav id="viz-tab-bar">
-  <button class="tab-btn active" data-viztab="earth-map">  <span class="tab-icon">🌍</span> Earth Map</button>
+  <button class="tab-btn active" data-viztab="fourview">   <span class="tab-icon">🔲</span> 4-View Engineering</button>
+  <button class="tab-btn" data-viztab="earth-map">         <span class="tab-icon">🌍</span> Earth Map</button>
   <button class="tab-btn" data-viztab="moon-map">          <span class="tab-icon">🌕</span> Moon Map</button>
   <button class="tab-btn" data-viztab="orbit-diag">        <span class="tab-icon">🛸</span> Orbit</button>
   <button class="tab-btn" data-viztab="geometry">          <span class="tab-icon">📐</span> Geometry</button>
@@ -68,6 +69,10 @@
     <button class="view-ctrl-btn" id="viz-load-last">📂 Load Last</button>
     <button class="view-ctrl-btn" id="viz-pause-sync">⏸ Pause Sync</button>
     <button class="view-ctrl-btn" id="viz-resume-sync">▶ Resume Sync</button>
+
+    <hr class="divider"/>
+    <h3>Selected Object</h3>
+    <div id="viz-object-inspector" style="font-size:0.75rem;color:#8b949e">No selection</div>
   </div>
 
   <!-- Canvas area -->
@@ -81,8 +86,29 @@
       </div>
       <span id="viz-tool-readout" style="margin-left:auto;font-size:0.75rem;color:#8b949e">—</span>
     </div>
+    <!-- 4-View Engineering -->
+    <div class="viz-tab-panel active" id="vtp-fourview">
+      <div class="fourview-grid" id="fourview-grid">
+        <div class="fourview-pane" id="pane-top" data-pane="top">
+          <div class="pane-header"><span class="pane-title">Top View (X-Y)</span><button class="pane-maximize" data-pane="top" title="Maximize">⤢</button></div>
+          <canvas id="canvas-top"></canvas>
+        </div>
+        <div class="fourview-pane" id="pane-sideA" data-pane="sideA">
+          <div class="pane-header"><span class="pane-title">Side A (Y-Z)</span><button class="pane-maximize" data-pane="sideA" title="Maximize">⤢</button></div>
+          <canvas id="canvas-sideA"></canvas>
+        </div>
+        <div class="fourview-pane" id="pane-sideB" data-pane="sideB">
+          <div class="pane-header"><span class="pane-title">Side B (X-Z)</span><button class="pane-maximize" data-pane="sideB" title="Maximize">⤢</button></div>
+          <canvas id="canvas-sideB"></canvas>
+        </div>
+        <div class="fourview-pane" id="pane-3d" data-pane="3d">
+          <div class="pane-header"><span class="pane-title">3D View</span><button class="pane-maximize" data-pane="3d" title="Maximize">⤢</button></div>
+          <canvas id="canvas-3d"></canvas>
+        </div>
+      </div>
+    </div>
     <!-- Earth Map -->
-    <div class="viz-tab-panel active" id="vtp-earth-map">
+    <div class="viz-tab-panel" id="vtp-earth-map">
       <canvas id="canvas-earth"></canvas>
     </div>
     <!-- Moon Map -->
