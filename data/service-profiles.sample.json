@@ -1,0 +1,114 @@
+[
+  {
+    "id": "SP-TTC-RES",
+    "name": "TTC-resilient",
+    "description": "Reliable telemetry, tracking, and command link designed to maintain contact in degraded conditions",
+    "preferredBands": ["S", "L"],
+    "targetDataRateClass": "low",
+    "modulationCodingAssumptions": "BPSK/QPSK with heavy FEC (rate 1/2 LDPC or convolutional)",
+    "weatherSensitivity": "low",
+    "latencyPriority": "medium",
+    "resiliencePriority": "critical",
+    "defaults": {
+      "minElevation_deg": 5,
+      "targetBER": 1e-6,
+      "marginDb": 6
+    }
+  },
+  {
+    "id": "SP-EO-HR",
+    "name": "EO-highrate",
+    "description": "High-rate Earth-observation imagery downlink optimized for throughput during short pass windows",
+    "preferredBands": ["X", "Ka"],
+    "targetDataRateClass": "high",
+    "modulationCodingAssumptions": "8PSK or 16APSK with rate 3/4 LDPC; ACM enabled",
+    "weatherSensitivity": "moderate",
+    "latencyPriority": "medium",
+    "resiliencePriority": "medium",
+    "defaults": {
+      "minElevation_deg": 10,
+      "targetBER": 1e-5,
+      "marginDb": 3
+    }
+  },
+  {
+    "id": "SP-BB-RELAY",
+    "name": "broadband-relay",
+    "description": "GEO or MEO broadband relay service for user terminals and gateway feeder links",
+    "preferredBands": ["Ku", "Ka"],
+    "targetDataRateClass": "very-high",
+    "modulationCodingAssumptions": "DVB-S2X with ACM up to 256APSK; multi-carrier",
+    "weatherSensitivity": "high",
+    "latencyPriority": "high",
+    "resiliencePriority": "medium",
+    "defaults": {
+      "minElevation_deg": 15,
+      "targetBER": 1e-7,
+      "marginDb": 2
+    }
+  },
+  {
+    "id": "SP-D2C-NTN",
+    "name": "D2C-NTN",
+    "description": "Direct-to-cell non-terrestrial network service for smartphone connectivity via LEO satellites",
+    "preferredBands": ["L", "S"],
+    "targetDataRateClass": "low",
+    "modulationCodingAssumptions": "OFDM-based (NR-NTN); low-order modulation with repetition coding",
+    "weatherSensitivity": "low",
+    "latencyPriority": "high",
+    "resiliencePriority": "high",
+    "defaults": {
+      "minElevation_deg": 25,
+      "targetBER": 1e-3,
+      "marginDb": 8
+    }
+  },
+  {
+    "id": "SP-ISL",
+    "name": "inter-satellite",
+    "description": "Optical or RF inter-satellite link for mesh or relay architectures",
+    "preferredBands": ["V", "Ka", "optical"],
+    "targetDataRateClass": "very-high",
+    "modulationCodingAssumptions": "Optical: OOK/DPSK coherent; RF: high-order QAM",
+    "weatherSensitivity": "none",
+    "latencyPriority": "critical",
+    "resiliencePriority": "high",
+    "defaults": {
+      "minElevation_deg": null,
+      "targetBER": 1e-9,
+      "marginDb": 3
+    }
+  },
+  {
+    "id": "SP-SIGINT-DL",
+    "name": "SIGINT-downlink",
+    "description": "Secure high-bandwidth signals-intelligence data downlink with anti-jam features",
+    "preferredBands": ["X", "Ka"],
+    "targetDataRateClass": "high",
+    "modulationCodingAssumptions": "Spread-spectrum with low probability of intercept; rate 1/2 turbo code",
+    "weatherSensitivity": "moderate",
+    "latencyPriority": "medium",
+    "resiliencePriority": "critical",
+    "defaults": {
+      "minElevation_deg": 10,
+      "targetBER": 1e-8,
+      "marginDb": 6
+    }
+  },
+  {
+    "id": "SP-EMRG",
+    "name": "emergency-fallback",
+    "description": "Minimal emergency beacon or safe-mode TT&C link using lowest-bandwidth most-robust mode available",
+    "preferredBands": ["S", "L", "UHF"],
+    "targetDataRateClass": "minimal",
+    "modulationCodingAssumptions": "BPSK rate 1/6 or lower; compatible with omni antennas",
+    "weatherSensitivity": "very-low",
+    "latencyPriority": "low",
+    "resiliencePriority": "critical",
+    "defaults": {
+      "minElevation_deg": 0,
+      "targetBER": 1e-4,
+      "marginDb": 10
+    }
+  }
+]

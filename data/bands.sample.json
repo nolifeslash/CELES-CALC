@@ -1,0 +1,65 @@
+[
+  {
+    "id": "BAND-L",
+    "name": "L-band",
+    "freqRange_GHz": { "min": 1.0, "max": 2.0 },
+    "typicalUse": "Navigation (GPS/Galileo), mobile satcom, SAR",
+    "atmosphericSensitivity": "low",
+    "rainFadeSensitivity": "negligible",
+    "notes": "Good penetration; limited bandwidth"
+  },
+  {
+    "id": "BAND-S",
+    "name": "S-band",
+    "freqRange_GHz": { "min": 2.0, "max": 4.0 },
+    "typicalUse": "TT&C, weather radar, some mobile satcom",
+    "atmosphericSensitivity": "low",
+    "rainFadeSensitivity": "low",
+    "notes": "Traditional TT&C workhorse; reliable in adverse weather"
+  },
+  {
+    "id": "BAND-C",
+    "name": "C-band",
+    "freqRange_GHz": { "min": 4.0, "max": 8.0 },
+    "typicalUse": "Legacy satcom, broadcast distribution, VSAT",
+    "atmosphericSensitivity": "low-moderate",
+    "rainFadeSensitivity": "low",
+    "notes": "Widely deployed for fixed satcom; 5G spectrum sharing concerns"
+  },
+  {
+    "id": "BAND-X",
+    "name": "X-band",
+    "freqRange_GHz": { "min": 8.0, "max": 12.0 },
+    "typicalUse": "Military satcom, Earth observation downlink, deep-space",
+    "atmosphericSensitivity": "moderate",
+    "rainFadeSensitivity": "moderate",
+    "notes": "Primary EO data downlink band; government/military allocations"
+  },
+  {
+    "id": "BAND-KU",
+    "name": "Ku-band",
+    "freqRange_GHz": { "min": 12.0, "max": 18.0 },
+    "typicalUse": "DTH television, VSAT broadband, TDRS relay",
+    "atmosphericSensitivity": "moderate-high",
+    "rainFadeSensitivity": "moderate-high",
+    "notes": "High throughput but rain-fade susceptible above ~14 GHz"
+  },
+  {
+    "id": "BAND-KA",
+    "name": "Ka-band",
+    "freqRange_GHz": { "min": 26.5, "max": 40.0 },
+    "typicalUse": "High-throughput satcom, deep-space high-rate, 5G backhaul",
+    "atmosphericSensitivity": "high",
+    "rainFadeSensitivity": "high",
+    "notes": "Very high data rates possible; requires rain-fade mitigation (ACM, site diversity)"
+  },
+  {
+    "id": "BAND-V",
+    "name": "V-band",
+    "freqRange_GHz": { "min": 40.0, "max": 75.0 },
+    "typicalUse": "Experimental high-capacity feeder links, inter-satellite links",
+    "atmosphericSensitivity": "very-high",
+    "rainFadeSensitivity": "very-high",
+    "notes": "60 GHz oxygen absorption peak makes some sub-bands ISL-only; emerging for NGSO feeder links"
+  }
+]

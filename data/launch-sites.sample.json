@@ -1,0 +1,112 @@
+[
+  {
+    "id": "LS-CC",
+    "name": "Cape Canaveral Space Force Station",
+    "aliases": ["Cape Canaveral", "CCSFS", "KSC", "Eastern Range"],
+    "operator": "US Space Force / NASA",
+    "country": "US",
+    "lat_deg": 28.4889,
+    "lon_deg": -80.5778,
+    "elevation_m": 3,
+    "siteType": "coastal",
+    "status": "active",
+    "supportedVehicleClasses": ["small", "medium", "heavy", "super-heavy"],
+    "nominalAzimuthNotes": "Eastward launches over Atlantic; typical range 35–120 deg",
+    "typicalInclinationNotes": "28.5° minimum direct insertion; supports SSO via dog-leg",
+    "sourceRecords": [
+      { "source": "NASA KSC Fact Sheet", "date": "2024-01-15", "confidence": 0.95 },
+      { "source": "FAA launch site database", "date": "2023-11-01", "confidence": 0.9 }
+    ],
+    "confidence": 0.95,
+    "notes": "Includes SLC-40, SLC-41, LC-39A/B complexes",
+    "tags": ["US", "primary", "crewed-capable"]
+  },
+  {
+    "id": "LS-BAI",
+    "name": "Baikonur Cosmodrome",
+    "aliases": ["Baikonur", "Tyuratam"],
+    "operator": "Roscosmos",
+    "country": "KZ",
+    "lat_deg": 45.965,
+    "lon_deg": 63.305,
+    "elevation_m": 90,
+    "siteType": "inland",
+    "status": "active",
+    "supportedVehicleClasses": ["medium", "heavy"],
+    "nominalAzimuthNotes": "Eastward launches; constrained by populated areas to north",
+    "typicalInclinationNotes": "51.6° commonly used for ISS; 46°–65° operational range",
+    "sourceRecords": [
+      { "source": "Roscosmos public records", "date": "2024-02-10", "confidence": 0.85 },
+      { "source": "Gunter's Space Page", "date": "2024-03-01", "confidence": 0.8 }
+    ],
+    "confidence": 0.85,
+    "notes": "Leased from Kazakhstan; operational since 1957",
+    "tags": ["Russia", "historical", "crewed-capable"]
+  },
+  {
+    "id": "LS-CSG",
+    "name": "Guiana Space Centre",
+    "aliases": ["Kourou", "CSG", "Centre Spatial Guyanais"],
+    "operator": "CNES / ESA",
+    "country": "FR-GF",
+    "lat_deg": 5.232,
+    "lon_deg": -52.769,
+    "elevation_m": 15,
+    "siteType": "coastal",
+    "status": "active",
+    "supportedVehicleClasses": ["small", "medium", "heavy"],
+    "nominalAzimuthNotes": "Near-equatorial; wide azimuth freedom over ocean",
+    "typicalInclinationNotes": "~5.2° direct insertion; excellent GTO performance",
+    "sourceRecords": [
+      { "source": "ESA/CNES CSG overview", "date": "2024-01-20", "confidence": 0.9 },
+      { "source": "Arianespace user manual", "date": "2023-06-01", "confidence": 0.92 }
+    ],
+    "confidence": 0.9,
+    "notes": "Supports Ariane 6, Vega-C, Soyuz (suspended)",
+    "tags": ["ESA", "equatorial", "GTO-optimized"]
+  },
+  {
+    "id": "LS-VAFB",
+    "name": "Vandenberg Space Force Base",
+    "aliases": ["Vandenberg", "VSFB", "Western Range"],
+    "operator": "US Space Force",
+    "country": "US",
+    "lat_deg": 34.7322,
+    "lon_deg": -120.5724,
+    "elevation_m": 112,
+    "siteType": "coastal",
+    "status": "active",
+    "supportedVehicleClasses": ["small", "medium", "heavy"],
+    "nominalAzimuthNotes": "Southward launches over Pacific; supports polar and SSO",
+    "typicalInclinationNotes": "Polar and sun-synchronous (97–98°) primary; retrograde capable",
+    "sourceRecords": [
+      { "source": "US Space Force fact sheet", "date": "2024-04-01", "confidence": 0.92 },
+      { "source": "SpaceX Vandenberg info", "date": "2024-02-15", "confidence": 0.88 }
+    ],
+    "confidence": 0.9,
+    "notes": "SLC-4E (Falcon 9), SLC-6 (Delta IV Heavy retired)",
+    "tags": ["US", "polar", "SSO"]
+  },
+  {
+    "id": "LS-TNSC",
+    "name": "Tanegashima Space Center",
+    "aliases": ["Tanegashima", "TNSC"],
+    "operator": "JAXA",
+    "country": "JP",
+    "lat_deg": 30.4008,
+    "lon_deg": 130.9689,
+    "elevation_m": 20,
+    "siteType": "coastal-island",
+    "status": "active",
+    "supportedVehicleClasses": ["medium", "heavy"],
+    "nominalAzimuthNotes": "Southeast over Pacific; fishing-season launch window constraints",
+    "typicalInclinationNotes": "30.4° minimum; GTO and SSO missions supported",
+    "sourceRecords": [
+      { "source": "JAXA Tanegashima overview", "date": "2024-03-10", "confidence": 0.88 },
+      { "source": "Gunter's Space Page", "date": "2024-01-25", "confidence": 0.8 }
+    ],
+    "confidence": 0.85,
+    "notes": "Supports H3 and Epsilon S; seasonal launch windows",
+    "tags": ["Japan", "island", "seasonal-constraints"]
+  }
+]

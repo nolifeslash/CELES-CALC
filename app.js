@@ -14,7 +14,23 @@ import * as UI         from './js/ui.js';
 import * as OMM        from './js/omm.js';
 import { SAMPLE_TLES, SAMPLE_SCENARIOS, PRESET_LOCATIONS } from './js/sample-data.js';
 import { TLE_SOURCES, fetchTLEFromURL } from './js/tle.js';
-import { GM_EARTH, GM_MOON, R_EARTH_MEAN } from './js/constants.js';
+import { GM_EARTH, GM_MOON, R_EARTH_MEAN, R_EARTH_EQUATORIAL } from './js/constants.js';
+import * as LinkBudget      from './js/link-budget.js';
+import * as Atmosphere      from './js/atmosphere.js';
+import * as RFConstants     from './js/rf-constants.js';
+import * as Interference    from './js/interference.js';
+import * as Quality         from './js/quality.js';
+import * as SatcomNetwork   from './js/satcom-network.js';
+import * as Groundstations  from './js/groundstations.js';
+import * as Antennas        from './js/antennas.js';
+import * as SIGINT          from './js/sigint.js';
+import * as LaunchSites     from './js/launch-sites.js';
+import * as LaunchVehicles  from './js/launch-vehicles.js';
+import * as LaunchPlanner   from './js/launch-planner.js';
+import * as TransferPlanner from './js/transfer-planner.js';
+import * as Phasing         from './js/phasing.js';
+import * as DeltaVBudget    from './js/delta-v-budget.js';
+import * as LunarTransfer   from './js/lunar-transfer.js';
 
 /* ================================================================
    State
@@ -71,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
   wireTLETab();
   wireVisibilityTab();
   wireDistanceTab();
+
+  ['satcom-sub-bar', 'launch-sub-bar'].forEach(UI.initSubTabs);
+  wireSatcomTab();
+  wireLaunchTab();
 });
 
 /* ================================================================
@@ -884,6 +904,343 @@ function calcGridIllum() {
 }
 
 /* ================================================================
+   ── SATCOM TAB ───────────────────────────────────────────────
+   ================================================================ */
+function wireSatcomTab() {
+  document.getElementById('btn-lb-calc')?.addEventListener('click', calcLinkBudget);
+  document.getElementById('btn-lb-demo')?.addEventListener('click', () => {
+    ['lb-txpower','lb-txgain','lb-rxgain','lb-freq','lb-bw','lb-datarate','lb-distance','lb-pointloss','lb-miscloss','lb-elevation']
+      .forEach((id, i) => document.getElementById(id).value = ['10','30','40','12','36','50','36000','0.5','2','30'][i]);
+  });
+  document.getElementById('btn-st-calc')?.addEventListener('click', calcStationComparison);
+  document.getElementById('btn-rt-calc')?.addEventListener('click', calcRouteComparison);
+  document.getElementById('btn-ij-calc')?.addEventListener('click', calcInterference);
+  document.getElementById('btn-si-calc')?.addEventListener('click', calcSigint);
+}
+
+function calcLinkBudget() {
+  const txPower   = UI.validateNumber('lb-txpower');   if (txPower   === null) return;
+  const txGain    = UI.validateNumber('lb-txgain');     if (txGain    === null) return;
+  const rxGain    = UI.validateNumber('lb-rxgain');     if (rxGain    === null) return;
+  const freqGHz   = UI.validateNumber('lb-freq');       if (freqGHz   === null) return;
+  const bwMHz     = UI.validateNumber('lb-bw');         if (bwMHz     === null) return;
+  const drMbps    = UI.validateNumber('lb-datarate');   if (drMbps    === null) return;
+  const distKm    = UI.validateNumber('lb-distance');   if (distKm    === null) return;
+  const pointLoss = UI.validateNumber('lb-pointloss');  if (pointLoss === null) return;
+  const miscLoss  = UI.validateNumber('lb-miscloss');   if (miscLoss  === null) return;
+  const elevation = UI.validateNumber('lb-elevation');  if (elevation === null) return;
+  const weather   = document.getElementById('lb-weather').value;
+  const modPreset = document.getElementById('lb-modulation').value;
+
+  const bandName = RFConstants.bandForFrequency(freqGHz) || 'Ku';
+  const atmosLoss = Atmosphere.atmosphericLoss(bandName, weather, elevation);
+
+  const result = LinkBudget.computeLinkBudget({
+    txPower_dBW:       txPower,
+    txAntennaGain_dBi: txGain,
+    rxAntennaGain_dBi: rxGain,
+    freq_Hz:           freqGHz * 1e9,
+    bandwidth_Hz:      bwMHz * 1e6,
+    dataRate_bps:      drMbps * 1e6,
+    distance_m:        distKm * 1e3,
+    pointingLoss_dB:   pointLoss,
+    losses_dB:         miscLoss + atmosLoss,
+    modulationPreset:  modPreset,
+    atmosphericLoss_dB: atmosLoss,
+  });
+
+  UI.renderResultCards('satcom-lb-results', [
+    { label: 'EIRP',              value: result.eirp_dBW,        unit: 'dBW', variant: 'hl' },
+    { label: 'Free-Space Path Loss', value: result.fspl_dB,      unit: 'dB' },
+    { label: 'Atmospheric Loss',  value: atmosLoss,              unit: 'dB' },
+    { label: 'Received Power',    value: result.rxPower_dBW,     unit: 'dBW' },
+    { label: 'C/N₀',             value: result.cn0_dBHz,         unit: 'dB·Hz' },
+    { label: 'Eb/N₀',            value: result.ebN0_dB,          unit: 'dB' },
+    { label: 'Required Eb/N₀',   value: result.requiredEbN0_dB,  unit: 'dB' },
+    { label: 'Link Margin',       value: result.margin_dB,       unit: 'dB', variant: result.margin_dB >= 3 ? 'ok' : 'warn' },
+    { label: 'Max Throughput',    value: (result.maxThroughput_bps / 1e6).toFixed(2), unit: 'Mbps' },
+  ], 'Link Budget Results');
+
+  _patchScenario({ rfScenario: { linkBudget: result, band: bandName, weather } });
+}
+
+function calcStationComparison() {
+  const alt  = UI.validateNumber('st-alt'); if (alt  === null) return;
+  const inc  = UI.validateNumber('st-inc'); if (inc  === null) return;
+  const band = document.getElementById('st-band').value;
+  const weather = document.getElementById('st-weather').value;
+  const optMode = document.getElementById('st-optmode').value;
+
+  const stations = Groundstations.loadStations(LaunchSites.BUILTIN_SITES.map(s => ({
+    name: s.name, lat_deg: s.lat_deg, lon_deg: s.lon_deg, alt_m: 0,
+    antennaGain_dBi: 40, band, costIndex: 1, hasRedundancy: true,
+    capabilities: ['ttc', 'eo'],
+  })));
+
+  const ranked = Groundstations.rankStations(stations, {
+    orbitAlt_km: alt, inclination_deg: inc, band, weatherPreset: weather, optimizationMode: optMode,
+  });
+
+  const headers = ['Rank', 'Station', 'Score', 'Margin (dB)', 'Coverage', 'Availability'];
+  const rows = ranked.map((r, i) => [
+    i + 1,
+    r.station?.name ?? '—',
+    typeof r.score === 'number' ? r.score.toFixed(1) : '—',
+    typeof r.margin === 'number' ? r.margin.toFixed(1) : '—',
+    typeof r.coverage === 'number' ? (r.coverage * 100).toFixed(0) + '%' : '—',
+    typeof r.availability === 'number' ? (r.availability * 100).toFixed(0) + '%' : '—',
+  ]);
+  UI.renderTable('satcom-st-results', headers, rows, 'Ground Station Ranking');
+  _patchScenario({ rfScenario: { stationComparison: ranked } });
+}
+
+function calcRouteComparison() {
+  const d1   = UI.validateNumber('rt-dist1'); if (d1   === null) return;
+  const d2   = UI.validateNumber('rt-dist2'); if (d2   === null) return;
+  const freq = UI.validateNumber('rt-freq');  if (freq === null) return;
+
+  const leg1 = SatcomNetwork.computeRouteLeg({ distance_m: d1 * 1e3, freq_Hz: freq * 1e9, label: 'Direct (short)' });
+  const leg2 = SatcomNetwork.computeRouteLeg({ distance_m: d2 * 1e3, freq_Hz: freq * 1e9, label: 'Relay (long)' });
+
+  const route1 = SatcomNetwork.computeRoute([leg1]);
+  const route2 = SatcomNetwork.computeRoute([leg2]);
+  const comparison = SatcomNetwork.compareRoutes([
+    { name: 'Direct Short Path', route: route1 },
+    { name: 'Relay Long Path',  route: route2 },
+  ]);
+
+  const items = comparison.ranked.map((r, i) => ({
+    label: `#${i + 1} ${r.name}`,
+    value: `Latency ${(r.route.oneWayLatency_s * 1e3).toFixed(1)} ms | Loss ${r.route.totalLoss_dB.toFixed(1)} dB`,
+  }));
+  items.push({ label: 'Recommended', value: comparison.recommended, variant: 'hl' });
+  UI.renderResultCards('satcom-rt-results', items, 'Route Comparison');
+  _patchScenario({ rfScenario: { routeComparison: comparison } });
+}
+
+function calcInterference() {
+  const sigPow  = UI.validateNumber('ij-sigpower');   if (sigPow  === null) return;
+  const noisPow = UI.validateNumber('ij-noisepower'); if (noisPow === null) return;
+  const jamEirp = UI.validateNumber('ij-jameirp');    if (jamEirp === null) return;
+  const jamDist = UI.validateNumber('ij-jamdist');    if (jamDist === null) return;
+  const freq    = UI.validateNumber('ij-freq');        if (freq    === null) return;
+  const bw      = UI.validateNumber('ij-bw');          if (bw      === null) return;
+  const mode    = document.getElementById('ij-mode').value;
+
+  const result = Interference.assessInterference({
+    signalPower_dBW:  sigPow,
+    noisePower_dBW:   noisPow,
+    jammerEIRP_dBW:   jamEirp,
+    jammerDistance_m:  jamDist * 1e3,
+    freq_Hz:          freq * 1e9,
+    jammerMode:       mode,
+    bandwidth_Hz:     bw * 1e6,
+  });
+
+  const stateVariant = result.state === 'resilient' ? 'ok' : result.state === 'degraded' ? 'warn' : 'hl';
+  UI.renderResultCards('satcom-ij-results', [
+    { label: 'Jammer Received',   value: result.jammerReceived_dBW, unit: 'dBW' },
+    { label: 'J/S',               value: result.jToS_dB,           unit: 'dB' },
+    { label: 'J/N',               value: result.jToN_dB,           unit: 'dB' },
+    { label: 'Margin Degradation', value: result.marginDegradation_dB, unit: 'dB' },
+    { label: 'State',             value: result.state,              variant: stateVariant },
+    { label: 'Mitigations',       value: (result.mitigationOptions || []).join(', ') || 'None' },
+  ], 'Interference Assessment');
+  _patchScenario({ rfScenario: { interference: result } });
+}
+
+function calcSigint() {
+  const emEirp = UI.validateNumber('si-emeirp'); if (emEirp === null) return;
+  const freq   = UI.validateNumber('si-freq');   if (freq   === null) return;
+  const dist   = UI.validateNumber('si-dist');   if (dist   === null) return;
+  const sens   = UI.validateNumber('si-sens');   if (sens   === null) return;
+  const gain   = UI.validateNumber('si-gain');   if (gain   === null) return;
+  const dwell  = UI.validateNumber('si-dwell');  if (dwell  === null) return;
+  const bw     = UI.validateNumber('si-bw');     if (bw     === null) return;
+  const duty   = UI.validateNumber('si-duty');   if (duty   === null) return;
+
+  const result = SIGINT.assessDetection({
+    emitterEIRP_dBW:        emEirp,
+    freq_Hz:                freq * 1e9,
+    emitterDistance_m:       dist * 1e3,
+    collectorSensitivity_dBW: sens,
+    collectorGain_dBi:      gain,
+    dwellTime_s:            dwell,
+  });
+
+  const emitterClass = SIGINT.classifyEmitter(freq * 1e9, bw * 1e6, duty);
+
+  UI.renderResultCards('satcom-si-results', [
+    { label: 'Received Power',     value: result.receivedPower_dBW, unit: 'dBW' },
+    { label: 'SNR Excess',         value: result.snrExcess_dB,      unit: 'dB' },
+    { label: 'Detection Score',    value: result.detectionScore,     variant: 'hl' },
+    { label: 'Intercept Opportunity', value: result.interceptOpportunity },
+    { label: 'Geolocation Class',  value: result.geolocationClass },
+    { label: 'Emitter Category',   value: emitterClass.category },
+    { label: 'Limiting Factors',   value: (result.limitingFactors || []).join(', ') || 'None' },
+  ], 'SIGINT Assessment');
+  _patchScenario({ rfScenario: { sigint: result } });
+}
+
+/* ================================================================
+   ── LAUNCH PLANNER TAB ──────────────────────────────────────────
+   ================================================================ */
+function wireLaunchTab() {
+  document.getElementById('btn-lto-calc')?.addEventListener('click', calcLaunchToOrbit);
+  document.getElementById('btn-lto-demo')?.addEventListener('click', () => {
+    document.getElementById('lto-site').value    = 'cape_canaveral';
+    document.getElementById('lto-alt').value     = '400';
+    document.getElementById('lto-inc').value     = '51.6';
+    document.getElementById('lto-payload').value = '5000';
+    document.getElementById('lto-vehicle').value = 'medium';
+  });
+  document.getElementById('btn-tr-calc')?.addEventListener('click', calcOrbitTransfer);
+  document.getElementById('btn-tr-demo')?.addEventListener('click', () => {
+    document.getElementById('tr-alt1').value    = '400';
+    document.getElementById('tr-alt2').value    = '35786';
+    document.getElementById('tr-planechg').value = '0';
+  });
+  document.getElementById('btn-rpo-calc')?.addEventListener('click', calcRPO);
+  document.getElementById('btn-lt-calc')?.addEventListener('click', calcLunarTransfer);
+  document.getElementById('btn-dv-calc')?.addEventListener('click', calcDeltaVBudget);
+}
+
+function calcLaunchToOrbit() {
+  const siteId  = document.getElementById('lto-site').value;
+  const alt     = UI.validateNumber('lto-alt');     if (alt     === null) return;
+  const inc     = UI.validateNumber('lto-inc');     if (inc     === null) return;
+  const payload = UI.validateNumber('lto-payload'); if (payload === null) return;
+  const vehicle = document.getElementById('lto-vehicle').value;
+
+  const site = LaunchSites.BUILTIN_SITES.find(s => s.id === siteId) || LaunchSites.BUILTIN_SITES[0];
+
+  const result = LaunchPlanner.planLaunch({
+    site,
+    targetAlt_km:   alt,
+    targetInc_deg:  inc,
+    payloadMass_kg: payload,
+    vehicleClass:   vehicle,
+  });
+
+  UI.renderResultCards('launch-lto-results', [
+    { label: 'Feasible',               value: result.feasible ? 'YES' : 'NO', variant: result.feasible ? 'ok' : 'warn' },
+    { label: 'Launch Azimuth',         value: result.azimuth_deg,    unit: '°' },
+    { label: 'Earth Rotation Benefit', value: result.earthRotationBenefit_m_s, unit: 'm/s' },
+    { label: 'Insertion ΔV',           value: result.insertionDeltaV_m_s, unit: 'm/s', variant: 'hl' },
+    { label: 'Vehicle Suitability',    value: result.vehicleSuitability?.rating ?? '—' },
+    { label: 'Warnings',              value: (result.warnings || []).join('; ') || 'None' },
+  ], 'Launch Plan');
+  _patchScenario({ launchScenario: { launchToOrbit: result } });
+}
+
+function calcOrbitTransfer() {
+  const alt1     = UI.validateNumber('tr-alt1');     if (alt1     === null) return;
+  const alt2     = UI.validateNumber('tr-alt2');     if (alt2     === null) return;
+  const planeChg = UI.validateNumber('tr-planechg'); if (planeChg === null) return;
+
+  const R = R_EARTH_EQUATORIAL;
+  const r1 = R + alt1 * 1e3;
+  const r2 = R + alt2 * 1e3;
+
+  const result = TransferPlanner.planCombinedTransfer({
+    initialOrbit: { a_m: r1, inc_deg: 0 },
+    targetOrbit:  { a_m: r2, inc_deg: planeChg },
+  });
+
+  const items = [
+    { label: 'Transfer Type',  value: result.transferType, variant: 'hl' },
+    { label: 'Total ΔV',       value: result.totalDeltaV_m_s, unit: 'm/s' },
+    { label: 'Transfer Time',  value: (result.transferTime_s / 3600).toFixed(2), unit: 'hours' },
+  ];
+  if (result.legs) {
+    result.legs.forEach(leg => {
+      items.push({ label: leg.name, value: leg.deltaV_m_s, unit: 'm/s' });
+    });
+  }
+  if (result.comparison) {
+    items.push({ label: 'Better Option', value: result.comparison.betterOption || '—' });
+  }
+  UI.renderResultCards('launch-tr-results', items, 'Orbit Transfer');
+  _patchScenario({ launchScenario: { transfer: result } });
+}
+
+function calcRPO() {
+  const alt1  = UI.validateNumber('rpo-alt1');  if (alt1  === null) return;
+  const alt2  = UI.validateNumber('rpo-alt2');  if (alt2  === null) return;
+  const phase = UI.validateNumber('rpo-phase'); if (phase === null) return;
+
+  const R = R_EARTH_EQUATORIAL;
+  const chaserOrbit = { a_m: R + alt1 * 1e3, inc_deg: 0 };
+  const targetOrbit = { a_m: R + alt2 * 1e3, inc_deg: 0 };
+
+  const result = Phasing.planRendezvous(chaserOrbit, targetOrbit, { phaseAngle_deg: phase });
+
+  const items = [
+    { label: 'Total ΔV',       value: result.totalDeltaV_m_s, unit: 'm/s', variant: 'hl' },
+    { label: 'Arrival Time',   value: (result.arrivalTime_s / 3600).toFixed(2), unit: 'hours' },
+    { label: 'Servicing Score', value: result.servicingOpportunityScore },
+  ];
+  if (result.phasingLegs) {
+    result.phasingLegs.forEach(leg => {
+      items.push({ label: leg.name, value: leg.deltaV_m_s, unit: 'm/s' });
+    });
+  }
+  UI.renderResultCards('launch-rpo-results', items, 'Rendezvous Plan');
+  _patchScenario({ launchScenario: { rpo: result } });
+}
+
+function calcLunarTransfer() {
+  const depAlt  = UI.validateNumber('lt-depalt');  if (depAlt  === null) return;
+  const moonAlt = UI.validateNumber('lt-moonalt'); if (moonAlt === null) return;
+
+  const result = LunarTransfer.planLunarTransfer({
+    departureAlt_km:  depAlt,
+    lunarOrbitAlt_km: moonAlt,
+  });
+
+  UI.renderResultCards('launch-lt-results', [
+    { label: 'TLI ΔV',            value: result.tliDeltaV_m_s,   unit: 'm/s', variant: 'hl' },
+    { label: 'LOI ΔV',            value: result.loiDeltaV_m_s,   unit: 'm/s' },
+    { label: 'Total ΔV',          value: result.totalDeltaV_m_s, unit: 'm/s' },
+    { label: 'Transfer Duration', value: (result.transferDuration_s / 3600).toFixed(1), unit: 'hours' },
+  ], 'Lunar Transfer');
+  _patchScenario({ launchScenario: { lunarTransfer: result } });
+}
+
+function calcDeltaVBudget() {
+  const presetKey = document.getElementById('dv-preset').value;
+  const budgetMap = { leo_to_geo: 'leoToGeo', leo_to_moon: 'leoToMoon', leo_servicing: 'leoServicing' };
+  const fnKey = budgetMap[presetKey];
+
+  if (!fnKey || !standardBudgetsHas(fnKey)) {
+    UI.renderResultCards('launch-dv-results', [
+      { label: 'Custom Budget', value: 'Build your own budget via the API (DeltaVBudget.createBudget)' },
+    ], 'Delta-V Budget');
+    return;
+  }
+
+  const budget  = DeltaVBudget.standardBudgets[fnKey]();
+  const totals  = DeltaVBudget.computeTotals(budget);
+  const tableStr = DeltaVBudget.budgetToTable(budget);
+
+  const items = [
+    { label: 'Total ΔV',           value: totals.totalDeltaV_m_s,     unit: 'm/s', variant: 'hl' },
+    { label: 'With Reserve',       value: totals.withReserve_m_s,     unit: 'm/s' },
+    { label: 'With Contingency',   value: totals.withContingency_m_s, unit: 'm/s' },
+  ];
+  totals.breakdown.forEach(leg => {
+    items.push({ label: leg.name, value: leg.deltaV_m_s, unit: 'm/s' });
+  });
+
+  UI.renderResultCards('launch-dv-results', items, 'Delta-V Budget');
+  _patchScenario({ launchScenario: { deltaVBudget: totals } });
+}
+
+function standardBudgetsHas(key) {
+  return typeof DeltaVBudget.standardBudgets[key] === 'function';
+}
+
+/* ================================================================
    Scenario helpers
    ================================================================ */
 function _patchScenario(patch) {
@@ -955,6 +1312,18 @@ export function runAcceptanceTests() {
       const old = { version: '1.0', tleResults: { satNumber: 25544 }, timeInput: { jd: 2451545, utc: '', unix: 0 } };
       const migrated = Scenario.migrateScenario(old);
       return migrated.version === '2.0' && Array.isArray(migrated.trackedObjectResults);
+    }},
+    { name: 'LinkBudget: FSPL at 12 GHz / 36000 km', fn: () => {
+      const fspl = LinkBudget.freeSpacePathLoss(12e9, 36000e3);
+      return fspl > 200 && fspl < 210;
+    }},
+    { name: 'LaunchSites: azimuth for ISS from KSC', fn: () => {
+      const r = LaunchSites.launchAzimuthForInclination(28.46, 51.6);
+      return r.azimuth_deg > 30 && r.azimuth_deg < 60;
+    }},
+    { name: 'LunarTransfer: TLI estimate', fn: () => {
+      const r = LunarTransfer.estimateTLI(400);
+      return r.deltaV_m_s > 3000 && r.deltaV_m_s < 3300;
     }},
   ];
 

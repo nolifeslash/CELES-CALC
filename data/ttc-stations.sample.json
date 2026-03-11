@@ -1,0 +1,68 @@
+[
+  {
+    "id": "TTC-ESA-KIR",
+    "name": "Kiruna TT&C Station",
+    "network": "ESTRACK",
+    "operator": "ESA",
+    "lat_deg": 67.857,
+    "lon_deg": 20.964,
+    "elevation_m": 403,
+    "supportedBands": ["S", "X"],
+    "antennas": [
+      { "id": "KIR-15", "diameter_m": 15, "bands": ["S", "X"], "gainDb": 52.0 },
+      { "id": "KIR-13", "diameter_m": 13, "bands": ["S"], "gainDb": 48.0 }
+    ],
+    "services": ["telemetry", "telecommand", "ranging", "LEO-support", "SSO-support"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "ESA ESTRACK station list", "date": "2024-02-01", "confidence": 0.92 },
+      { "source": "ESA Ground Facilities Overview", "date": "2023-06-01", "confidence": 0.9 }
+    ],
+    "confidence": 0.91,
+    "notes": "High-latitude ESTRACK node; first-pass contact for many ESA LEO missions"
+  },
+  {
+    "id": "TTC-NASA-WGS",
+    "name": "White Sands Complex",
+    "network": "TDRS / SN",
+    "operator": "NASA",
+    "lat_deg": 32.5007,
+    "lon_deg": -106.6086,
+    "elevation_m": 1450,
+    "supportedBands": ["S", "Ku", "Ka"],
+    "antennas": [
+      { "id": "WSGT-1", "diameter_m": 18, "bands": ["S", "Ku"], "gainDb": 57.0 },
+      { "id": "STGT-2", "diameter_m": 18, "bands": ["S", "Ku", "Ka"], "gainDb": 58.0 }
+    ],
+    "services": ["TDRS-relay", "telemetry", "telecommand", "data-relay", "S-band-return"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "NASA SN Users Guide (453-SNUG)", "date": "2023-08-01", "confidence": 0.93 },
+      { "source": "NASA GSFC TDRS overview", "date": "2024-01-15", "confidence": 0.9 }
+    ],
+    "confidence": 0.92,
+    "notes": "Ground terminal for TDRS relay satellites; provides near-continuous LEO coverage"
+  },
+  {
+    "id": "TTC-ISRO-BLR",
+    "name": "ISTRAC Bangalore TT&C",
+    "network": "ISTRAC",
+    "operator": "ISRO",
+    "lat_deg": 13.0341,
+    "lon_deg": 77.5116,
+    "elevation_m": 920,
+    "supportedBands": ["S", "X"],
+    "antennas": [
+      { "id": "BLR-11", "diameter_m": 11, "bands": ["S"], "gainDb": 46.0 },
+      { "id": "BLR-7", "diameter_m": 7.2, "bands": ["S", "X"], "gainDb": 42.0 }
+    ],
+    "services": ["telemetry", "telecommand", "ranging", "orbit-determination"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "ISRO ISTRAC overview", "date": "2023-12-01", "confidence": 0.8 },
+      { "source": "ISRO annual report 2023", "date": "2024-04-01", "confidence": 0.78 }
+    ],
+    "confidence": 0.79,
+    "notes": "Primary hub of ISRO TT&C network; supports IRS and GSAT series"
+  }
+]

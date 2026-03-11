@@ -50,6 +50,12 @@ export function palette() {
     earthStroke: dark ? '#2a6aa8'   : '#2060a0',
     moonFill:    dark ? '#2c2c2c'   : '#c8c0b0',
     moonStroke:  dark ? '#4a4a4a'   : '#888070',
+    markerStation:   '#ff9800',
+    markerLaunchSite:'#ff5722',
+    linkGood:        '#3fb950',
+    linkWarn:        '#ffd700',
+    linkBad:         '#f85149',
+    transferArc:     '#e040fb',
   };
 }
 
@@ -581,6 +587,98 @@ export function extractSceneObjects(scenario) {
         color:       p.markerSat,
         orbitPoints,
       });
+    });
+  }
+
+  // ── Ground stations ──────────────────────────────────────────────
+  if (Array.isArray(scenario.groundStationRecommendations)) {
+    scenario.groundStationRecommendations.forEach((gs, i) => {
+      if (gs.lat_deg == null || gs.lon_deg == null) return;
+      // Convert lat/lon to approximate ECI position (on Earth surface)
+      const R = R_EARTH_MEAN;
+      const lat = gs.lat_deg * Math.PI / 180;
+      const lon = gs.lon_deg * Math.PI / 180;
+      objects.push({
+        id:        `gs-${gs.id || i}`,
+        type:      'ground_station',
+        label:     gs.name || gs.label || `Station ${i + 1}`,
+        x:         (R * Math.cos(lat) * Math.cos(lon)) / 1000,
+        y:         (R * Math.cos(lat) * Math.sin(lon)) / 1000,
+        z:         (R * Math.sin(lat)) / 1000,
+        radius_km: null,
+        color:     '#ff9800',
+        orbitPoints: null,
+        score:     gs.score,
+      });
+    });
+  }
+
+  // ── RF Links ─────────────────────────────────────────────────────
+  if (Array.isArray(scenario.links)) {
+    scenario.links.forEach((link, i) => {
+      if (!link.from || !link.to) return;
+      objects.push({
+        id:        `link-${i}`,
+        type:      'link',
+        label:     link.label || `Link ${i + 1}`,
+        x:         (link.from.x || 0) / 1000,
+        y:         (link.from.y || 0) / 1000,
+        z:         (link.from.z || 0) / 1000,
+        endX:      (link.to.x || 0) / 1000,
+        endY:      (link.to.y || 0) / 1000,
+        endZ:      (link.to.z || 0) / 1000,
+        radius_km: null,
+        color:     link.margin_dB > 3 ? '#3fb950' : link.margin_dB > 0 ? '#ffd700' : '#f85149',
+        orbitPoints: null,
+        margin_dB: link.margin_dB,
+      });
+    });
+  }
+
+  // ── Launch sites ─────────────────────────────────────────────────
+  if (scenario.launchScenario?.site) {
+    const site = scenario.launchScenario.site;
+    if (site.lat_deg != null && site.lon_deg != null) {
+      const R = R_EARTH_MEAN;
+      const lat = site.lat_deg * Math.PI / 180;
+      const lon = site.lon_deg * Math.PI / 180;
+      objects.push({
+        id:        'launch-site',
+        type:      'launch_site',
+        label:     site.name || 'Launch Site',
+        x:         (R * Math.cos(lat) * Math.cos(lon)) / 1000,
+        y:         (R * Math.cos(lat) * Math.sin(lon)) / 1000,
+        z:         (R * Math.sin(lat)) / 1000,
+        radius_km: null,
+        color:     '#ff5722',
+        orbitPoints: null,
+      });
+    }
+  }
+
+  // ── Transfer arcs ────────────────────────────────────────────────
+  if (Array.isArray(scenario.transferPlans)) {
+    scenario.transferPlans.forEach((tp, i) => {
+      if (tp.transferOrbit?.a && tp.transferOrbit?.e != null) {
+        const orbitPoints = _sampleKeplerianOrbit({
+          a: tp.transferOrbit.a,
+          e: tp.transferOrbit.e,
+          i_deg: tp.transferOrbit.i_deg || 0,
+          raan_deg: tp.transferOrbit.raan_deg || 0,
+          argp_deg: tp.transferOrbit.argp_deg || 0,
+        });
+        objects.push({
+          id:        `transfer-${i}`,
+          type:      'transfer_arc',
+          label:     tp.label || `Transfer ${i + 1}`,
+          x:         0,
+          y:         0,
+          z:         0,
+          radius_km: null,
+          color:     '#e040fb',
+          orbitPoints,
+        });
+      }
     });
   }
 

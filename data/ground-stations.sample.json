@@ -1,0 +1,117 @@
+[
+  {
+    "id": "GS-GOL",
+    "name": "Goldstone Deep Space Complex",
+    "operator": "NASA / JPL",
+    "country": "US",
+    "lat_deg": 35.4267,
+    "lon_deg": -116.89,
+    "elevation_m": 900,
+    "antennas": [
+      { "id": "DSS-14", "diameter_m": 70, "bands": ["S", "X"], "gainDb": 74.0 },
+      { "id": "DSS-25", "diameter_m": 34, "bands": ["S", "X", "Ka"], "gainDb": 68.0 }
+    ],
+    "supportedBands": ["S", "X", "Ka"],
+    "capabilities": ["deep-space-tracking", "telemetry", "command", "VLBI", "radio-science"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "NASA DSN Handbook (810-005)", "date": "2023-09-01", "confidence": 0.95 },
+      { "source": "JPL DSN Now public data", "date": "2024-04-01", "confidence": 0.9 }
+    ],
+    "confidence": 0.95,
+    "notes": "Part of NASA Deep Space Network; 70 m antenna is largest steerable in DSN",
+    "tags": ["DSN", "deep-space", "NASA"]
+  },
+  {
+    "id": "GS-CAN",
+    "name": "Canberra Deep Space Communication Complex",
+    "operator": "NASA / CSIRO",
+    "country": "AU",
+    "lat_deg": -35.4014,
+    "lon_deg": 148.9817,
+    "elevation_m": 680,
+    "antennas": [
+      { "id": "DSS-43", "diameter_m": 70, "bands": ["S", "X"], "gainDb": 74.0 },
+      { "id": "DSS-36", "diameter_m": 34, "bands": ["S", "X", "Ka"], "gainDb": 68.0 }
+    ],
+    "supportedBands": ["S", "X", "Ka"],
+    "capabilities": ["deep-space-tracking", "telemetry", "command", "VLBI"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "NASA DSN Handbook (810-005)", "date": "2023-09-01", "confidence": 0.95 },
+      { "source": "CDSCC public site", "date": "2024-01-15", "confidence": 0.88 }
+    ],
+    "confidence": 0.93,
+    "notes": "Only DSN site able to contact Voyager 2 via DSS-43 S-band uplink",
+    "tags": ["DSN", "deep-space", "Southern-hemisphere"]
+  },
+  {
+    "id": "GS-MAD",
+    "name": "Madrid Deep Space Communication Complex",
+    "operator": "NASA / INTA",
+    "country": "ES",
+    "lat_deg": 40.4314,
+    "lon_deg": -4.2481,
+    "elevation_m": 830,
+    "antennas": [
+      { "id": "DSS-63", "diameter_m": 70, "bands": ["S", "X"], "gainDb": 74.0 },
+      { "id": "DSS-56", "diameter_m": 34, "bands": ["X", "Ka"], "gainDb": 68.3 }
+    ],
+    "supportedBands": ["S", "X", "Ka"],
+    "capabilities": ["deep-space-tracking", "telemetry", "command", "VLBI", "radio-science"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "NASA DSN Handbook (810-005)", "date": "2023-09-01", "confidence": 0.95 },
+      { "source": "INTA MDSCC overview", "date": "2024-02-01", "confidence": 0.87 }
+    ],
+    "confidence": 0.93,
+    "notes": "Robledo de Chavela site; DSS-56 is newest 34 m BWG antenna",
+    "tags": ["DSN", "deep-space", "Europe"]
+  },
+  {
+    "id": "GS-SVA",
+    "name": "Svalbard Satellite Station",
+    "operator": "KSAT",
+    "country": "NO",
+    "lat_deg": 78.2307,
+    "lon_deg": 15.3976,
+    "elevation_m": 460,
+    "antennas": [
+      { "id": "SG-1", "diameter_m": 13, "bands": ["S", "X"], "gainDb": 52.0 },
+      { "id": "SG-3", "diameter_m": 7.3, "bands": ["S", "X"], "gainDb": 46.0 }
+    ],
+    "supportedBands": ["S", "X"],
+    "capabilities": ["LEO-tracking", "polar-coverage", "telemetry", "data-downlink"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "KSAT network overview", "date": "2024-03-01", "confidence": 0.88 },
+      { "source": "ESA ground station catalogue", "date": "2023-10-01", "confidence": 0.85 }
+    ],
+    "confidence": 0.87,
+    "notes": "Unique high-latitude location enables every polar orbit pass contact",
+    "tags": ["KSAT", "LEO", "polar", "Arctic"]
+  },
+  {
+    "id": "GS-HBK",
+    "name": "Hartebeesthoek Ground Station",
+    "operator": "SANSA",
+    "country": "ZA",
+    "lat_deg": -25.887,
+    "lon_deg": 27.707,
+    "elevation_m": 1540,
+    "antennas": [
+      { "id": "HBK-26", "diameter_m": 26, "bands": ["S", "X", "L"], "gainDb": 58.0 },
+      { "id": "HBK-15", "diameter_m": 15, "bands": ["S", "X"], "gainDb": 52.0 }
+    ],
+    "supportedBands": ["L", "S", "X"],
+    "capabilities": ["LEO-tracking", "telemetry", "VLBI", "geodesy"],
+    "status": "active",
+    "sourceRecords": [
+      { "source": "SANSA Space Operations", "date": "2024-01-10", "confidence": 0.82 },
+      { "source": "IVS station catalogue", "date": "2023-07-01", "confidence": 0.85 }
+    ],
+    "confidence": 0.83,
+    "notes": "Key Southern-hemisphere tracking and VLBI site",
+    "tags": ["SANSA", "LEO", "Southern-hemisphere", "VLBI"]
+  }
+]
