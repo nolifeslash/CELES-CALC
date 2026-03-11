@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CELES-CALC — Visualizer</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { overflow: hidden; }
+    #viz-main { height: calc(100vh - var(--hdr-h) - var(--tab-h)); margin-top: calc(var(--hdr-h) + var(--tab-h)); }
+    #viz-canvas-area { background: #000a18; }
+    .viz-tab-panel canvas { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header id="viz-header">
+  <span class="logo">CELES<em>-</em>CALC</span>
+  <span class="header-sub" style="color:#6e7681">Visualizer</span>
+  <div class="header-actions">
+    <span id="viz-sync-status" class="waiting">⏳ waiting for calculator</span>
+    <button id="viz-theme-toggle" title="Toggle theme" style="background:none;border:none;cursor:pointer;color:#8b949e;font-size:1.2rem;padding:4px 7px;border-radius:4px">☀</button>
+    <a href="index.html" class="btn btn-secondary btn-sm" id="btn-back-to-calc">← Calculator</a>
+  </div>
+</header>
+
+<!-- ── TAB BAR ────────────────────────────────────────────── -->
+<nav id="viz-tab-bar">
+  <button class="tab-btn active" data-viztab="earth-map">  <span class="tab-icon">🌍</span> Earth Map</button>
+  <button class="tab-btn" data-viztab="moon-map">          <span class="tab-icon">🌕</span> Moon Map</button>
+  <button class="tab-btn" data-viztab="orbit-diag">        <span class="tab-icon">🛸</span> Orbit</button>
+  <button class="tab-btn" data-viztab="geometry">          <span class="tab-icon">📐</span> Geometry</button>
+  <button class="tab-btn" data-viztab="combined">          <span class="tab-icon">🔲</span> Combined</button>
+</nav>
+
+<!-- ── MAIN ───────────────────────────────────────────────── -->
+<div id="viz-main">
+  <!-- Sidebar: layer toggles + view controls -->
+  <div id="viz-sidebar">
+    <h3>Layers</h3>
+    <label class="layer-toggle"><input type="checkbox" id="layer-grid" checked> Grid</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-labels" checked> Labels</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-orbits" checked> Orbits</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-sightlines" checked> Sight Lines</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-illumination" checked> Illumination</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-zones"> Zones</label>
+    <label class="layer-toggle"><input type="checkbox" id="layer-measurements" checked> Measurements</label>
+
+    <hr class="divider"/>
+    <h3>View</h3>
+    <button class="view-ctrl-btn" id="viz-fit">⊡ Fit to View</button>
+    <button class="view-ctrl-btn" id="viz-center-obs">📍 Center Observer</button>
+    <button class="view-ctrl-btn" id="viz-zoom-in">+ Zoom In</button>
+    <button class="view-ctrl-btn" id="viz-zoom-out">− Zoom Out</button>
+    <button class="view-ctrl-btn" id="viz-reset-view">↺ Reset View</button>
+
+    <hr class="divider"/>
+    <h3>Scenario</h3>
+    <button class="view-ctrl-btn" id="viz-load-last">📂 Load Last</button>
+    <button class="view-ctrl-btn" id="viz-pause-sync">⏸ Pause Sync</button>
+    <button class="view-ctrl-btn" id="viz-resume-sync">▶ Resume Sync</button>
+  </div>
+
+  <!-- Canvas area -->
+  <div id="viz-canvas-area">
+    <!-- Earth Map -->
+    <div class="viz-tab-panel active" id="vtp-earth-map">
+      <canvas id="canvas-earth"></canvas>
+    </div>
+    <!-- Moon Map -->
+    <div class="viz-tab-panel" id="vtp-moon-map">
+      <canvas id="canvas-moon"></canvas>
+    </div>
+    <!-- Orbit Diagram -->
+    <div class="viz-tab-panel" id="vtp-orbit-diag">
+      <canvas id="canvas-orbit"></canvas>
+    </div>
+    <!-- Geometry View -->
+    <div class="viz-tab-panel" id="vtp-geometry">
+      <canvas id="canvas-geometry"></canvas>
+    </div>
+    <!-- Combined (2x2 grid) -->
+    <div class="viz-tab-panel" id="vtp-combined" style="display:none;position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#000">
+      <canvas id="canvas-combined-earth"  style="width:100%;height:100%;display:block"></canvas>
+      <canvas id="canvas-combined-moon"   style="width:100%;height:100%;display:block"></canvas>
+      <canvas id="canvas-combined-orbit"  style="width:100%;height:100%;display:block"></canvas>
+      <canvas id="canvas-combined-geo"    style="width:100%;height:100%;display:block"></canvas>
+    </div>
+
+    <!-- Status bar overlay -->
+    <div id="viz-status-bar">
+      <span id="viz-status-coords">hover for coords</span>
+      <span id="viz-status-scenario">no scenario loaded</span>
+      <span id="viz-sync-indicator" style="margin-left:auto;font-size:.7rem;padding:2px 8px;border-radius:10px;background:#21262d;color:#8b949e">local only</span>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="visualizer.js"></script>
+</body>
+</html>
