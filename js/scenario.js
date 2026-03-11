@@ -88,6 +88,25 @@ export function createEmptyScenario() {
     notes:           '',
     warnings:        [],
     precisionLabels: {},
+
+    // ── SATCOM / RF extension ───────────────────────────────────────────────
+    rfScenario:                  {},
+    links:                       [],
+    networkRoutes:               [],
+    interferenceResults:         {},
+    jammingResults:              {},
+    sigintResults:               {},
+    groundStationRecommendations: [],
+
+    // ── Launch / Transfer extension ─────────────────────────────────────────
+    launchScenario:    {},
+    launchWindows:     [],
+    launchSolutions:   [],
+    rpoPlans:          [],
+    transferPlans:     [],
+    missionLegs:       [],
+    deltaVBudget:      {},
+    infrastructureDataRefs: {},
   };
 }
 
@@ -348,6 +367,32 @@ export function validateScenario(scenario) {
     }
   }
 
+  // ── SATCOM / RF arrays ────────────────────────────────────────────────────
+  const rfArrayFields = [
+    ['links',                        'scenario.links'],
+    ['networkRoutes',                'scenario.networkRoutes'],
+    ['groundStationRecommendations', 'scenario.groundStationRecommendations'],
+  ];
+  for (const [field, label] of rfArrayFields) {
+    if (scenario[field] !== undefined && !Array.isArray(scenario[field])) {
+      errors.push(`${label} must be an array.`);
+    }
+  }
+
+  // ── Launch / Transfer arrays ─────────────────────────────────────────────
+  const launchArrayFields = [
+    ['launchWindows',   'scenario.launchWindows'],
+    ['launchSolutions', 'scenario.launchSolutions'],
+    ['rpoPlans',        'scenario.rpoPlans'],
+    ['transferPlans',   'scenario.transferPlans'],
+    ['missionLegs',     'scenario.missionLegs'],
+  ];
+  for (const [field, label] of launchArrayFields) {
+    if (scenario[field] !== undefined && !Array.isArray(scenario[field])) {
+      errors.push(`${label} must be an array.`);
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -420,11 +465,36 @@ export function getScenarioSummary(scenario) {
   const tgtCount = (scenario.targets?.length ?? 0);
   const visCount = (scenario.visibilityResults?.length ?? 0);
 
+  // SATCOM / RF counts
+  const linkCount   = (scenario.links?.length ?? 0);
+  const routeCount  = (scenario.networkRoutes?.length ?? 0);
+  const gsRecCount  = (scenario.groundStationRecommendations?.length ?? 0);
+
+  // Launch / Transfer counts
+  const launchWinCount = (scenario.launchWindows?.length ?? 0);
+  const launchSolCount = (scenario.launchSolutions?.length ?? 0);
+  const rpoCount       = (scenario.rpoPlans?.length ?? 0);
+  const xferCount      = (scenario.transferPlans?.length ?? 0);
+  const legCount       = (scenario.missionLegs?.length ?? 0);
+
   const parts = [`CELES-CALC Scenario v${scenario.version ?? '?'}`];
   parts.push(`Time: ${utc}`);
   if (obsCount > 0) parts.push(`${obsCount} observer${obsCount !== 1 ? 's' : ''}`);
   if (tgtCount > 0) parts.push(`${tgtCount} target${tgtCount !== 1 ? 's' : ''}`);
   if (visCount > 0) parts.push(`${visCount} visibility result${visCount !== 1 ? 's' : ''}`);
+
+  // SATCOM / RF
+  if (linkCount > 0)  parts.push(`${linkCount} link${linkCount !== 1 ? 's' : ''}`);
+  if (routeCount > 0) parts.push(`${routeCount} network route${routeCount !== 1 ? 's' : ''}`);
+  if (gsRecCount > 0) parts.push(`${gsRecCount} ground station recommendation${gsRecCount !== 1 ? 's' : ''}`);
+
+  // Launch / Transfer
+  if (launchWinCount > 0) parts.push(`${launchWinCount} launch window${launchWinCount !== 1 ? 's' : ''}`);
+  if (launchSolCount > 0) parts.push(`${launchSolCount} launch solution${launchSolCount !== 1 ? 's' : ''}`);
+  if (rpoCount > 0)       parts.push(`${rpoCount} RPO plan${rpoCount !== 1 ? 's' : ''}`);
+  if (xferCount > 0)      parts.push(`${xferCount} transfer plan${xferCount !== 1 ? 's' : ''}`);
+  if (legCount > 0)       parts.push(`${legCount} mission leg${legCount !== 1 ? 's' : ''}`);
+
   if (scenario.notes) parts.push(`Notes: ${scenario.notes.slice(0, 80)}`);
 
   return parts.join(' | ');
