@@ -219,6 +219,87 @@ canvas.viz-canvas {
   background: #000;
 }
 
+/* 4-View Engineering Layout */
+#vtp-fourview.active {
+  display: grid;
+  position: absolute;
+  inset: 0;
+}
+
+.fourview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  background: #000;
+  width: 100%;
+  height: 100%;
+}
+
+.fourview-pane {
+  position: relative;
+  overflow: hidden;
+  background: var(--col-surface, #161b22);
+}
+
+.fourview-pane canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pane-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.5);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.pane-header .pane-title {
+  font-size: 0.7rem;
+  color: #8b949e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pane-header .pane-maximize {
+  pointer-events: auto;
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.pane-header .pane-maximize:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+/* Maximized pane */
+.fourview-grid.maximized {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.fourview-grid.maximized .fourview-pane {
+  display: none;
+}
+
+.fourview-grid.maximized .fourview-pane.maximized-pane {
+  display: block;
+}
+
 /* No-data placeholder */
 .viz-no-data {
   position: absolute;
