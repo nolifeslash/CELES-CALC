@@ -106,6 +106,13 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-time" class="tab-panel">
     <div class="section-title">🕐 Time Systems Converter</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Time Systems</summary>
+      <ul>
+        <li><strong>Input:</strong> UTC date/time string (ISO 8601, e.g. <code>2025-06-21T12:00:00Z</code>), or type <code>now</code> for current time, or <code>JD:2451545.0</code> for Julian Date input</li>
+        <li><strong>Output:</strong> Julian Date (JD), Modified Julian Date (MJD), Unix timestamp (ms), TAI (JD), TT (JD), GPS Week + TOW, leap seconds</li>
+      </ul>
+    </details>
     <div class="two-col">
       <div class="card">
         <div class="card-title">Input</div>
@@ -146,6 +153,17 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-earth" class="tab-panel">
     <div class="section-title">🌍 Earth Coordinate Transformations</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Earth Coordinates</summary>
+      <ul>
+        <li><strong>Geodetic ↔ ECEF:</strong> Input lat (°, −90..90), lon (°, −180..180), alt (m). Output: X, Y, Z in meters (ECEF WGS-84)</li>
+        <li><strong>ECEF ↔ ENU:</strong> Input reference lat/lon + ECEF delta. Output: East/North/Up in meters</li>
+        <li><strong>ENU ↔ Az/El/Range:</strong> Input E, N, U in meters. Output: azimuth (°), elevation (°), range (m)</li>
+        <li><strong>ECEF ↔ ECI:</strong> Input X, Y, Z + UTC time. Uses simplified GMST rotation</li>
+        <li><strong>Observer → Target:</strong> Input observer and target lat/lon/alt. Output: Az/El/Range and above-horizon check</li>
+        <li><strong>Solar Geometry:</strong> Input lat/lon + UTC. Output: sub-solar point, sunlit status, local solar time</li>
+      </ul>
+    </details>
     <div class="sub-tab-bar" id="earth-sub-bar">
       <button class="sub-tab-btn active" data-subtab="earth-geo">Geodetic ↔ ECEF</button>
       <button class="sub-tab-btn" data-subtab="earth-enu">ECEF ↔ ENU</button>
@@ -302,6 +320,15 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-moon" class="tab-panel">
     <div class="section-title">🌕 Moon Coordinate Tools</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Moon Coordinates</summary>
+      <ul>
+        <li><strong>Selenographic ↔ Cartesian:</strong> Input lat/lon/alt in selenographic. Output: X, Y, Z in lunar body-fixed (meters)</li>
+        <li><strong>Moon Position:</strong> Input UTC time. Output: Moon ECI position, Earth-Moon distance, sub-Earth/sub-solar points</li>
+        <li><strong>Illumination:</strong> Input selenographic lat/lon + UTC. Output: sunlit status, solar elevation</li>
+        <li><strong>Earth Visibility:</strong> Input selenographic lat/lon + UTC. Output: Earth visible, Earth elevation, near-side</li>
+      </ul>
+    </details>
     <div class="sub-tab-bar" id="moon-sub-bar">
       <button class="sub-tab-btn active" data-subtab="moon-seleno">Selenographic ↔ Cartesian</button>
       <button class="sub-tab-btn" data-subtab="moon-pos">Moon Position</button>
@@ -392,6 +419,16 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-orbit" class="tab-panel">
     <div class="section-title">🛸 Space &amp; Orbital Mechanics</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Space/Orbital</summary>
+      <ul>
+        <li><strong>Orbital Parameters:</strong> Input semi-major axis (m) and body. Output: period, circular/escape velocity</li>
+        <li><strong>COE ↔ State:</strong> Input a (m), e, i (°), RAAN (°), ω (°), ν (°). Output: position/velocity vectors</li>
+        <li><strong>Anomaly Conversions:</strong> Input eccentricity + mean anomaly. Output: eccentric and true anomaly</li>
+        <li><strong>Hohmann Transfer:</strong> Input r₁, r₂ (m). Output: ΔV₁, ΔV₂, transfer time</li>
+        <li><strong>Plane Change:</strong> Input velocity (m/s) + Δi (°). Output: ΔV</li>
+      </ul>
+    </details>
     <div class="sub-tab-bar" id="orbit-sub-bar">
       <button class="sub-tab-btn active" data-subtab="orbit-params">Orbital Parameters</button>
       <button class="sub-tab-btn" data-subtab="orbit-coe2state">COE → State</button>
@@ -509,6 +546,14 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-tle" class="tab-panel">
     <div class="section-title">📡 TLE Tools</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — TLE Tools</summary>
+      <ul>
+        <li><strong>Parse TLE:</strong> Input: two-line element set (line 1 and line 2). Output: orbital elements, epoch, period</li>
+        <li><strong>Propagate:</strong> Input: TLE + optional UTC time. Output: lat/lon/alt, ECI position (simplified 2-body, not SGP4)</li>
+        <li><strong>Stream:</strong> Fetch live TLE data from CelesTrak. Select a source, click Fetch, then click a result to load it</li>
+      </ul>
+    </details>
     <div class="two-col">
       <div class="card">
         <div class="card-title">TLE Input</div>
@@ -540,6 +585,25 @@
           <button class="btn btn-ghost btn-sm" data-sample-tle="gpsPRN11">GPS PRN11</button>
           <button class="btn btn-ghost btn-sm" data-sample-tle="molniya">Molniya</button>
         </div>
+        <hr class="divider"/>
+        <div class="card-title">📡 Stream TLE from Internet</div>
+        <div class="form-group">
+          <label>TLE Source</label>
+          <select id="tle-stream-source">
+            <option value="iss">ISS (ZARYA)</option>
+            <option value="stations">Space Stations</option>
+            <option value="active">Active Satellites</option>
+            <option value="gps">GPS Operational</option>
+            <option value="starlink">Starlink</option>
+            <option value="weather">Weather</option>
+            <option value="geo">Geostationary</option>
+          </select>
+        </div>
+        <div class="btn-row" style="border:none;padding-top:0;margin-top:0">
+          <button class="btn btn-primary btn-sm" id="btn-tle-fetch">📡 Fetch TLEs</button>
+        </div>
+        <div id="tle-stream-status"></div>
+        <div id="tle-stream-results" class="tle-stream-list"></div>
       </div>
       <div class="card">
         <div class="card-title">Results</div>
@@ -553,6 +617,13 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-visibility" class="tab-panel">
     <div class="section-title">👁 Visibility Calculator</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Visibility</summary>
+      <ul>
+        <li><strong>Input:</strong> Observer lat/lon/alt, target lat/lon/alt, UTC time</li>
+        <li><strong>Output:</strong> Visible (yes/no), reason, elevation, azimuth, range</li>
+      </ul>
+    </details>
     <div class="two-col">
       <div class="card">
         <div class="card-title">Observer</div>
@@ -604,6 +675,14 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="panel-distance" class="tab-panel">
     <div class="section-title">📏 Distance &amp; Measurement</div>
+    <details class="tool-instructions">
+      <summary>ℹ️ Instructions — Distance &amp; Measurement</summary>
+      <ul>
+        <li><strong>Great Circle:</strong> Input two lat/lon points. Output: distance (km/m/mi), bearing</li>
+        <li><strong>Earth-Moon:</strong> Input UTC time. Output: distance in km, AU, Earth radii</li>
+        <li><strong>Grid Illumination:</strong> Input UTC + cell size. Output: table of lunar grid cells with sunlit status</li>
+      </ul>
+    </details>
     <div class="sub-tab-bar" id="dist-sub-bar">
       <button class="sub-tab-btn active" data-subtab="dist-gc">Great-Circle</button>
       <button class="sub-tab-btn" data-subtab="dist-earthmoon">Earth–Moon</button>
