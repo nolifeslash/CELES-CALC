@@ -6,7 +6,7 @@
  * not read from the DOM beyond resolving the canvas element itself.
  */
 
-import { DEG_TO_RAD, R_EARTH_MEAN, R_MOON } from './constants.js';
+import { DEG_TO_RAD, R_EARTH_MEAN, R_MOON, AU } from './constants.js';
 
 /* ================================================================
    Internal colour palette (respects dark/light theme via body attr)
@@ -566,9 +566,16 @@ export function drawMoonMap(canvasOrId, scenario, layers = {}) {
 }
 
 /* ================================================================
-   drawOrbitDiagram — orbit schematic
+   drawOrbitDiagram — orbit schematic with zoom-level presets
    ================================================================ */
-export function drawOrbitDiagram(canvasOrId, scenario, layers = {}) {
+/**
+ * Draw a zoom-level–aware orbit diagram.
+ * @param {HTMLCanvasElement|string} canvasOrId
+ * @param {object} scenario  CELES-CALC scenario state
+ * @param {object} [layers]  layer visibility flags
+ * @param {'galactic'|'solar'|'earth-moon'|'earth'|'moon'} [zoomLevel='earth-moon']
+ */
+export function drawOrbitDiagram(canvasOrId, scenario, layers = {}, zoomLevel = 'earth-moon') {
   const canvas = resolveCanvas(canvasOrId);
   if (!canvas) return;
   const ctx = prepareCanvas(canvas);
@@ -585,18 +592,161 @@ export function drawOrbitDiagram(canvasOrId, scenario, layers = {}) {
   // Background grid
   if (layers.grid !== false) drawGrid(ctx, w, h, 10);
 
-  // Central body (Earth)
-  const earthR = Math.min(w, h) * 0.08;
+  switch (zoomLevel) {
+    case 'galactic':   _drawGalacticView(ctx, w, h, cx, cy, p, layers); break;
+    case 'solar':      _drawSolarView(ctx, w, h, cx, cy, p, layers);    break;
+    case 'earth':      _drawEarthCloseup(ctx, w, h, cx, cy, p, layers); break;
+    case 'moon':       _drawMoonCloseup(ctx, w, h, cx, cy, p, layers);  break;
+    case 'earth-moon':
+    default:
+      _drawEarthMoonView(ctx, w, h, cx, cy, p, layers, scenario);
+      break;
+  }
+
+  _drawLabel(ctx, `ORBIT · ${zoomLevel.toUpperCase()}`, w, h, p);
+}
+
+/* ── Galactic zoom ──────────────────────────────────────────────── */
+/**
+ * Draw a schematic Milky Way top-down view with the Sun's position.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawGalacticView(ctx, w, h, cx, cy, p, layers) {
+  // Milky Way ellipse (simplified spiral)
   ctx.save();
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, earthR);
+  ctx.strokeStyle = p.gridLine;
+  ctx.lineWidth = 0.8;
+  const galR = Math.min(w, h) * 0.42;
+  // Draw concentric spiral arms
+  for (let arm = 0; arm < 4; arm++) {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(100,160,255,${0.08 + arm * 0.03})`;
+    ctx.lineWidth = galR * 0.12;
+    const offset = (arm * Math.PI) / 2;
+    for (let t = 0.3; t < 2.8; t += 0.05) {
+      const r = galR * 0.15 * t;
+      const a = t * 1.2 + offset;
+      const px = cx + r * Math.cos(a);
+      const py = cy + r * Math.sin(a);
+      t === 0.3 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  // Galactic centre bulge
+  const bulge = ctx.createRadialGradient(cx, cy, 0, cx, cy, galR * 0.18);
+  bulge.addColorStop(0, 'rgba(255,230,160,0.35)');
+  bulge.addColorStop(1, 'rgba(255,230,160,0)');
+  ctx.fillStyle = bulge;
+  ctx.beginPath(); ctx.arc(cx, cy, galR * 0.18, 0, Math.PI * 2); ctx.fill();
+
+  // Sun position (~8.2 kpc from centre ≈ 60% of visible radius)
+  const sunDist = galR * 0.6;
+  const sunAngle = -Math.PI * 0.35;
+  const sunX = cx + sunDist * Math.cos(sunAngle);
+  const sunY = cy + sunDist * Math.sin(sunAngle);
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.arc(sunX, sunY, 4, 0, Math.PI * 2); ctx.fill();
+  if (layers.labels !== false) {
+    ctx.fillStyle = p.textMain;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('☉ Solar System', sunX + 8, sunY);
+  }
+
+  // Scale label
+  ctx.fillStyle = p.textDim;
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('~100 000 ly diameter', cx, cy + galR + 18);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+/* ── Solar System zoom ──────────────────────────────────────────── */
+/**
+ * Draw inner solar system: Sun + Mercury, Venus, Earth, Mars orbits to scale.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawSolarView(ctx, w, h, cx, cy, p, layers) {
+  ctx.save();
+  // Orbital radii in AU
+  const planets = [
+    { name: 'Mercury', rAU: 0.387, color: '#b0b0b0' },
+    { name: 'Venus',   rAU: 0.723, color: '#e6c87a' },
+    { name: 'Earth',   rAU: 1.000, color: '#4a9af5' },
+    { name: 'Mars',    rAU: 1.524, color: '#e06040' },
+  ];
+  const maxAU = 1.8;
+  const scale = (Math.min(w, h) * 0.44) / maxAU;
+
+  // Sun
+  const sunGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 10);
+  sunGrd.addColorStop(0, '#fff8a0');
+  sunGrd.addColorStop(1, '#ffd700');
+  ctx.fillStyle = sunGrd;
+  ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill();
+  if (layers.labels !== false) {
+    ctx.fillStyle = p.textDim;
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sun', cx, cy + 18);
+  }
+
+  // Planet orbits and markers
+  for (const pl of planets) {
+    const r = pl.rAU * scale;
+    ctx.strokeStyle = `rgba(255,255,255,0.15)`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+
+    // Planet dot (arbitrary angle for visual spread)
+    const angle = pl.rAU * 4.5;
+    const px = cx + r * Math.cos(angle);
+    const py = cy + r * Math.sin(angle);
+    ctx.fillStyle = pl.color;
+    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+    if (layers.labels !== false) {
+      ctx.fillStyle = p.textMain;
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(pl.name, px + 7, py + 3);
+    }
+  }
+
+  // AU scale bar
+  ctx.fillStyle = p.textDim;
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  const barY = cy + maxAU * scale + 20;
+  ctx.fillText('1 AU', cx, barY);
+  ctx.strokeStyle = p.textDim;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - scale / 2, barY - 8);
+  ctx.lineTo(cx + scale / 2, barY - 8);
+  ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+/* ── Earth-Moon zoom (default) ──────────────────────────────────── */
+/**
+ * Draw the Earth-Moon system with scenario orbits overlaid.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawEarthMoonView(ctx, w, h, cx, cy, p, layers, scenario) {
+  const lunarDist = 384400; // km
+  const maxDim = Math.min(w, h) * 0.44;
+  const kmPerPx = (lunarDist * 1.2) / maxDim;
+
+  // Earth
+  const earthRpx = Math.max(6, R_EARTH_MEAN / 1000 / kmPerPx);
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, earthRpx);
   grd.addColorStop(0, '#1a5a8a');
   grd.addColorStop(1, '#0d3052');
   ctx.fillStyle = grd;
-  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#2878aa'; ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
-
+  ctx.beginPath(); ctx.arc(cx, cy, earthRpx, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2878aa'; ctx.lineWidth = 1; ctx.stroke();
   if (layers.labels !== false) {
     ctx.fillStyle = p.textDim;
     ctx.font = 'bold 11px sans-serif';
@@ -606,7 +756,53 @@ export function drawOrbitDiagram(canvasOrId, scenario, layers = {}) {
     ctx.textAlign = 'left';
   }
 
-  // Orbit arc from scenario
+  // Lunar orbit ring
+  const moonOrbitPx = lunarDist / kmPerPx;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.arc(cx, cy, moonOrbitPx, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Moon marker (placed at angle=0 for simplicity)
+  const moonRpx = Math.max(3, R_MOON / 1000 / kmPerPx);
+  const moonX = cx + moonOrbitPx;
+  const moonY = cy;
+  ctx.fillStyle = p.markerMoon;
+  ctx.beginPath(); ctx.arc(moonX, moonY, Math.max(moonRpx, 4), 0, Math.PI * 2); ctx.fill();
+  if (layers.labels !== false) {
+    ctx.fillStyle = p.textMain;
+    ctx.font = '10px sans-serif';
+    ctx.fillText('Moon', moonX + Math.max(moonRpx, 4) + 4, moonY + 3);
+  }
+
+  // Distance annotation
+  if (layers.measurements !== false) {
+    ctx.save();
+    ctx.strokeStyle = p.textDim;
+    ctx.lineWidth = 0.6;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(moonX, moonY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = p.textDim;
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('384 400 km', (cx + moonX) / 2, cy - 8);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  // Overlay scenario orbits (same logic as original)
+  _drawScenarioOrbits(ctx, w, h, cx, cy, p, layers, scenario);
+}
+
+/**
+ * Draw scenario-specific orbit arcs (shared by earth-moon and other levels).
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawScenarioOrbits(ctx, w, h, cx, cy, p, layers, scenario) {
   const or = scenario?.orbitResults;
   if (or && layers.orbits !== false) {
     const a = or.a ?? or.sma_m;
@@ -615,19 +811,14 @@ export function drawOrbitDiagram(canvasOrId, scenario, layers = {}) {
       const maxDim = Math.min(w, h) * 0.44;
       const scale  = maxDim / a;
       drawOrbitArc(ctx, { a, e }, cx, cy, scale);
-
-      // Satellite position marker
       if (or.r_vec) {
         const rx = or.r_vec[0] * scale;
         const ry = or.r_vec[1] * scale;
-        const sx = cx + rx;
-        const sy = cy - ry;
-        drawMarker(ctx, sx, sy, 'SC', 'satellite');
+        drawMarker(ctx, cx + rx, cy - ry, 'SC', 'satellite');
       }
     }
   }
 
-  // TLE propagated result
   const tler = scenario?.tleResults;
   if (tler && layers.orbits !== false) {
     const a_m = tler.a_m ?? ((6378137 + (tler.alt_km ?? 400) * 1000));
@@ -638,30 +829,138 @@ export function drawOrbitDiagram(canvasOrId, scenario, layers = {}) {
     }
   }
 
-  // Hohmann transfer arcs
   const hr = scenario?.orbitResults?.hohmann;
   if (hr && layers.orbits !== false) {
     const r1 = hr.r1; const r2 = hr.r2;
     const maxDim = Math.min(w, h) * 0.44;
     const scale = maxDim / Math.max(r1, r2);
-    // Initial orbit
     ctx.save();
     ctx.strokeStyle = p.markerObs;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]);
+    ctx.lineWidth = 1; ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(cx, cy, r1 * scale, 0, Math.PI * 2); ctx.stroke();
-    // Final orbit
     ctx.strokeStyle = p.markerTgt;
     ctx.beginPath(); ctx.arc(cx, cy, r2 * scale, 0, Math.PI * 2); ctx.stroke();
-    // Transfer ellipse
     const at = (r1 + r2) / 2;
     const et = Math.abs(r2 - r1) / (r2 + r1);
     ctx.strokeStyle = '#ffd700'; ctx.setLineDash([4, 3]);
     drawOrbitArc(ctx, { a: at, e: et }, cx, cy, scale);
     ctx.restore();
   }
+}
 
-  _drawLabel(ctx, 'ORBIT', w, h, p);
+/* ── Earth close-up zoom ────────────────────────────────────────── */
+/**
+ * Draw Earth with LEO, MEO, GEO orbit altitude rings.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawEarthCloseup(ctx, w, h, cx, cy, p, layers) {
+  // Earth radius ≈ 6 371 km; GEO alt ≈ 35 786 km → orbital radius ≈ 42 157 km
+  const earthR_km = R_EARTH_MEAN / 1000;
+  const geoR_km   = earthR_km + 35786;
+  const maxDim    = Math.min(w, h) * 0.44;
+  const kmPerPx   = geoR_km * 1.15 / maxDim;
+  const earthRpx  = earthR_km / kmPerPx;
+
+  // Earth
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, earthRpx);
+  grd.addColorStop(0, '#1a5a8a');
+  grd.addColorStop(1, '#0d3052');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.arc(cx, cy, earthRpx, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2878aa'; ctx.lineWidth = 1; ctx.stroke();
+  if (layers.labels !== false) {
+    ctx.fillStyle = p.textDim;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Earth', cx, cy);
+    ctx.textAlign = 'left';
+  }
+
+  // Orbit rings
+  const orbits = [
+    { name: 'LEO (400 km)',    alt: 400,   color: '#3fb950' },
+    { name: 'MEO (20 200 km)', alt: 20200, color: '#d29922' },
+    { name: 'GEO (35 786 km)', alt: 35786, color: '#f85149' },
+  ];
+  for (const orb of orbits) {
+    const rPx = (earthR_km + orb.alt) / kmPerPx;
+    ctx.save();
+    ctx.strokeStyle = orb.color;
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.7;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.arc(cx, cy, rPx, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    if (layers.labels !== false) {
+      ctx.fillStyle = orb.color;
+      ctx.font = '10px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(orb.name, cx + rPx + 6, cy);
+    }
+    ctx.restore();
+  }
+}
+
+/* ── Moon close-up zoom ─────────────────────────────────────────── */
+/**
+ * Draw Moon close-up with low-lunar-orbit ring.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function _drawMoonCloseup(ctx, w, h, cx, cy, p, layers) {
+  const moonR_km = R_MOON / 1000; // ≈ 1 737 km
+  const lloAlt   = 100;           // km — low lunar orbit
+  const maxDim   = Math.min(w, h) * 0.38;
+  const kmPerPx  = (moonR_km * 1.4) / maxDim;
+  const moonRpx  = moonR_km / kmPerPx;
+
+  // Moon surface
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, moonRpx);
+  grd.addColorStop(0, '#555');
+  grd.addColorStop(1, '#333');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.arc(cx, cy, moonRpx, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = p.lunarStroke; ctx.lineWidth = 1; ctx.stroke();
+  if (layers.labels !== false) {
+    ctx.fillStyle = p.textDim;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Moon', cx, cy);
+    ctx.textAlign = 'left';
+  }
+
+  // LLO ring
+  const lloPx = (moonR_km + lloAlt) / kmPerPx;
+  ctx.save();
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.arc(cx, cy, lloPx, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  if (layers.labels !== false) {
+    ctx.fillStyle = '#58a6ff';
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LLO (100 km)', cx + lloPx + 6, cy);
+  }
+  ctx.restore();
+
+  // Frozen orbit (higher)
+  const frozenAlt = 750;
+  const frozenPx = (moonR_km + frozenAlt) / kmPerPx;
+  ctx.save();
+  ctx.strokeStyle = '#d29922';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath(); ctx.arc(cx, cy, frozenPx, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  if (layers.labels !== false) {
+    ctx.fillStyle = '#d29922';
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Frozen (750 km)', cx + frozenPx + 6, cy - 14);
+  }
+  ctx.restore();
 }
 
 /* ================================================================
@@ -817,6 +1116,84 @@ export function drawObserverHorizon(canvasOrId, observer, targets) {
   ctx.restore();
 
   _drawLabel(ctx, 'HORIZON', w, h, p);
+}
+
+/* ================================================================
+   drawMeasurements — overlay measurement lines / angles on canvas
+   ================================================================ */
+/**
+ * Draw user-placed measurement annotations.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{type:string, points:Array<{x:number,y:number}>, label:string}>} measurements
+ */
+export function drawMeasurements(ctx, measurements) {
+  if (!measurements || !measurements.length) return;
+  const p = palette();
+  ctx.save();
+
+  for (const m of measurements) {
+    if (m.type === 'distance' && m.points.length === 2) {
+      const [a, b] = m.points;
+      // Line
+      ctx.strokeStyle = '#f0c040';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.setLineDash([]);
+      // End markers
+      for (const pt of [a, b]) {
+        ctx.fillStyle = '#f0c040';
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      // Label at midpoint
+      if (m.label) {
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        const tw = ctx.measureText(m.label).width;
+        ctx.fillRect(mx - tw / 2 - 4, my - 16, tw + 8, 18);
+        ctx.fillStyle = '#f0c040';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(m.label, mx, my - 7);
+        ctx.textAlign = 'left';
+      }
+    } else if (m.type === 'angle' && m.points.length === 3) {
+      const [a, vertex, b] = m.points;
+      // Lines from vertex to both ends
+      ctx.strokeStyle = '#60d0f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(vertex.x, vertex.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      // Angle arc
+      const ang1 = Math.atan2(a.y - vertex.y, a.x - vertex.x);
+      const ang2 = Math.atan2(b.y - vertex.y, b.x - vertex.x);
+      ctx.strokeStyle = '#60d0f0';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(vertex.x, vertex.y, 20, ang1, ang2); ctx.stroke();
+      // Point markers
+      for (const pt of [a, vertex, b]) {
+        ctx.fillStyle = '#60d0f0';
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      // Label
+      if (m.label) {
+        const midAng = (ang1 + ang2) / 2;
+        const lx = vertex.x + 30 * Math.cos(midAng);
+        const ly = vertex.y + 30 * Math.sin(midAng);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        const tw = ctx.measureText(m.label).width;
+        ctx.fillRect(lx - tw / 2 - 4, ly - 8, tw + 8, 16);
+        ctx.fillStyle = '#60d0f0';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(m.label, lx, ly);
+        ctx.textAlign = 'left';
+      }
+    }
+  }
+  ctx.restore();
 }
 
 /* ================================================================
