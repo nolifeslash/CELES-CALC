@@ -155,17 +155,34 @@ export function render3DView(canvas, scenario, viewState, layerState, interactio
     }
   }
 
-  // 9. Markers (depth-sorted — farther first, already sorted)
+  // 9a. RF link lines (drawn before markers so markers paint on top)
+  if (isLayerVisible(layerState, 'rfLinks', PANE_ID)) {
+    for (const obj of projected) {
+      if (obj.type !== 'link') continue;
+      const endPt = projectPerspective(
+        { x: obj.endX, y: obj.endY, z: obj.endZ }, camera, vpSize,
+      );
+      if (endPt) {
+        drawLine(ctx, obj.px, obj.py, endPt.px, endPt.py, obj.color, false, 2);
+      }
+    }
+  }
+
+  // 9b. Markers (depth-sorted — farther first, already sorted)
   const showLabels = isLayerVisible(layerState, 'labels', PANE_ID);
   for (const obj of projected) {
-    if (obj.type === 'earth' || obj.type === 'moon') continue;
-    if (obj.type === 'observer'  && !isLayerVisible(layerState, 'observers', PANE_ID)) continue;
-    if (obj.type === 'target'    && !isLayerVisible(layerState, 'targets', PANE_ID)) continue;
-    if (obj.type === 'satellite' && !isLayerVisible(layerState, 'trackedObjects', PANE_ID)) continue;
+    if (obj.type === 'earth' || obj.type === 'moon' || obj.type === 'link') continue;
+    if (obj.type === 'observer'       && !isLayerVisible(layerState, 'observers', PANE_ID)) continue;
+    if (obj.type === 'target'         && !isLayerVisible(layerState, 'targets', PANE_ID)) continue;
+    if (obj.type === 'satellite'      && !isLayerVisible(layerState, 'trackedObjects', PANE_ID)) continue;
+    if (obj.type === 'ground_station' && !isLayerVisible(layerState, 'groundStations', PANE_ID)) continue;
+    if (obj.type === 'launch_site'    && !isLayerVisible(layerState, 'launchSites', PANE_ID)) continue;
+    if (obj.type === 'transfer_arc')  continue;
 
     const isSel = obj.id === selectedId;
     const isHov = obj.id === hoveredId;
-    drawMarkerDot(ctx, obj.px, obj.py, obj.color, 5,
+    const size = obj.type === 'ground_station' ? 7 : 5;
+    drawMarkerDot(ctx, obj.px, obj.py, obj.color, size,
       showLabels ? obj.label : undefined, isSel, isHov);
   }
 

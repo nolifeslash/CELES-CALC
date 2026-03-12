@@ -529,6 +529,365 @@ Accuracy: errors ≈ km/day in LEO (no SGP4 perturbation model).
 
 ---
 
+## 7. RF / SATCOM Link Budget
+
+> Source: [`js/link-budget.js`](js/link-budget.js), [`js/rf-constants.js`](js/rf-constants.js), [`js/atmosphere.js`](js/atmosphere.js)
+
+### Free-Space Path Loss (Friis)
+
+```
+FSPL (dB) = 20 log₁₀(4 π d f / c)
+```
+
+where *d* is path distance (m), *f* is frequency (Hz), *c* = 299 792 458 m/s.
+
+Accuracy: **Exact by definition** (assumes isotropic radiator in free space).
+
+### EIRP (Effective Isotropic Radiated Power)
+
+```
+EIRP (dBW) = P_tx (dBW) + G_tx (dBi)
+```
+
+### Received Power
+
+```
+P_r (dBW) = EIRP + G_r − FSPL − L_atm − L_point − L_pol − L_misc
+```
+
+where:
+- G_r = receive antenna gain (dBi)
+- L_atm = atmospheric / rain attenuation (dB)
+- L_point = pointing loss (dB)
+- L_pol = polarisation mismatch loss (dB)
+- L_misc = miscellaneous implementation loss (dB)
+
+Accuracy: **Standard engineering approximation** (individual loss terms are
+preset-based, not full ITU-R P.618 propagation).
+
+### Noise Density
+
+```
+N₀ (dBW/Hz) = k_B + T_sys (dBK)
+            = −228.6 + 10 log₁₀(T_sys)
+```
+
+where *k_B* = −228.6 dBW/(Hz·K) (Boltzmann).
+
+### Carrier-to-Noise Density
+
+```
+C/N₀ (dB·Hz) = P_r − N₀
+```
+
+### Eb/N₀ (Energy-per-Bit to Noise)
+
+```
+Eb/N₀ (dB) = C/N₀ − 10 log₁₀(R_b)
+```
+
+where *R_b* is the data rate (bps).
+
+### Link Margin
+
+```
+margin (dB) = Eb/N₀ − Eb/N₀_required
+```
+
+where `Eb/N₀_required` is the demodulator threshold for the selected
+modulation + coding scheme (from `MODULATION_PRESETS`).
+
+### Margin Classification
+
+| Margin range | Label |
+|-------------|-------|
+| ≥ 6 dB | Excellent |
+| ≥ 3 dB | Good |
+| ≥ 1 dB | Marginal |
+| ≥ 0 dB | Minimal |
+| ≥ −3 dB | Poor |
+| < −3 dB | Failed |
+
+---
+
+## 8. Antenna Gain Models
+
+> Source: [`js/antennas.js`](js/antennas.js)
+
+### Parabolic Dish Gain
+
+```
+G (dBi) = 10 log₁₀(η (π D f / c)²)
+```
+
+where *η* is aperture efficiency (default 0.55), *D* is diameter (m).
+
+### Half-Power Beamwidth
+
+```
+θ₃dB (°) ≈ 70 c / (f D)
+```
+
+Accuracy: **Standard engineering approximation** (assumes uniform circular
+aperture).
+
+### Effective Aperture Area
+
+```
+A_eff = G λ² / (4π)
+```
+
+Exact by definition.
+
+### Pointing Loss (Gaussian beam model)
+
+```
+L_point (dB) ≈ 12 (θ_off / θ₃dB)²
+```
+
+where *θ_off* is the angular offset from boresight.
+
+---
+
+## 9. Atmospheric / Propagation Presets
+
+> Source: [`js/atmosphere.js`](js/atmosphere.js)
+
+### Low-Elevation Penalty
+
+```
+L_elev (factor) = 1 / sin(max(el, 5°))
+```
+
+Cosecant model clamped at 5° elevation to avoid singularity.
+
+### Atmospheric + Rain Loss
+
+```
+L_atm (dB) = L_zenith(band, weather) × L_elev
+```
+
+where `L_zenith` is a tabulated attenuation per band and weather preset (dB
+at zenith).  These are **simplified educational approximations** — not full
+ITU-R P.676 / P.618 models.
+
+### Weather Presets
+
+| Preset | Description | Sensitivity |
+|--------|-------------|-------------|
+| clear_sky | No precipitation | Baseline |
+| light_rain | ~4 mm/h | Low |
+| heavy_rain | ~25 mm/h | High at Ku/Ka |
+| storm | ~80 mm/h | Very high |
+| polar_dry | Cold dry atmosphere | Low |
+| maritime_humid | Warm humid | Moderate |
+| desert_dry | Hot dry | Low |
+
+### Ionospheric Scintillation Placeholder
+
+```
+L_iono (dB) ≈ 2 / f²_GHz     (for f < 3 GHz)
+            = 0                (for f ≥ 3 GHz)
+```
+
+Accuracy: **Simplified educational approximation** only.
+
+---
+
+## 10. Interference / Jamming
+
+> Source: [`js/interference.js`](js/interference.js)
+
+### Jammer Received Power
+
+```
+P_j (dBW) = EIRP_j − FSPL(d_j, f)
+```
+
+where *d_j* is jammer distance to receiver (m).
+
+### Jammer-to-Signal Ratio
+
+```
+J/S (dB) = P_j − P_r
+```
+
+### Jammer-to-Noise Ratio
+
+```
+J/N (dB) = P_j − N_floor
+```
+
+### Margin Degradation
+
+```
+degradation (dB) = 10 log₁₀(1 + 10^(J/N / 10))
+```
+
+### RF State Classification
+
+| J/S threshold | State |
+|--------------|-------|
+| J/S < −10 dB | Resilient |
+| −10 ≤ J/S < 0 dB | Degraded |
+| J/S ≥ 0 dB | Denied |
+
+### Jammer Modes
+
+| Mode | Bandwidth factor |
+|------|-----------------|
+| Spot | 1× |
+| Barrage | 10× (spreads power) |
+| Swept | 3× (approximate) |
+
+Accuracy: **Simplified educational approximation** — free-space jammer model
+only; no multipath, antenna sidelobes, or adaptive cancellation.
+
+---
+
+## 11. Service Quality Classification
+
+> Source: [`js/quality.js`](js/quality.js)
+
+### Throughput Class
+
+| Data rate | Class |
+|-----------|-------|
+| < 1 kbps | Very low |
+| < 100 kbps | Low |
+| < 1 Mbps | Medium |
+| < 100 Mbps | High |
+| ≥ 100 Mbps | Very high |
+
+### BER / PER Class Proxy
+
+| Eb/N₀ excess | Class |
+|-------------|-------|
+| ≥ 6 dB | Excellent |
+| ≥ 3 dB | Good |
+| ≥ 0 dB | Marginal |
+| < 0 dB | Poor |
+
+### Availability Class
+
+| Margin | Class |
+|--------|-------|
+| ≥ 6 dB | High availability |
+| ≥ 3 dB | Standard availability |
+| ≥ 0 dB | Degraded |
+| < 0 dB | Outage risk |
+
+---
+
+## 12. Ground-Station Scoring
+
+> Source: [`js/groundstations.js`](js/groundstations.js), [`js/optimizer.js`](js/optimizer.js)
+
+### Weighted Multi-Factor Score
+
+```
+S = Σ wᵢ × mᵢ     (i = coverage, margin, availability, latency, resilience, cost)
+```
+
+where *wᵢ* are user-selected weights and *mᵢ* are normalised metrics (0–1).
+
+Cost is subtracted: `S -= w_cost × m_cost`.
+
+### Default Weights (best-mixed mode)
+
+| Factor | Weight |
+|--------|--------|
+| Coverage | 0.20 |
+| Margin | 0.25 |
+| Availability | 0.20 |
+| Latency | 0.10 |
+| Resilience | 0.15 |
+| Cost | 0.10 |
+
+### Optimisation Modes
+
+Eight preset weight profiles: highest margin, highest throughput, lowest
+latency, most resilient, cheapest workable, best TT&C, best EO downlink,
+best mixed score.
+
+---
+
+## 13. Route / Latency Scoring
+
+> Source: [`js/satcom-network.js`](js/satcom-network.js)
+
+### One-Way Propagation Delay
+
+```
+t_prop (s) = d / c
+```
+
+### Route Aggregate
+
+```
+total_latency = Σ t_prop(leg_i) + Σ t_proc(relay_i)
+total_loss    = Σ FSPL(leg_i) + Σ L_atm(leg_i)
+```
+
+### Route Comparison Score
+
+```
+score = 0.4 × (1 − latency_norm) + 0.4 × (1 − loss_norm) + 0.2 × (1 − hop_norm)
+```
+
+where `_norm` values are normalised to [0, 1] across candidates.
+
+---
+
+## 14. SIGINT Opportunity Scoring
+
+> Source: [`js/sigint.js`](js/sigint.js)
+
+### SNR Excess
+
+```
+SNR_excess (dB) = P_r − (N₀ + 10 log₁₀(BW))
+```
+
+where *P_r* is the received emitter power at the collector.
+
+### Integration Gain
+
+```
+G_int (dB) = 5 log₁₀(dwell_s)
+```
+
+### Detection Score (Sigmoid)
+
+```
+score = 100 / (1 + e^(−0.5 × (SNR_excess + G_int)))
+```
+
+Clipped to [0, 100].
+
+### Intercept Opportunity
+
+| Score range | Class |
+|------------|-------|
+| ≥ 70 | Excellent |
+| ≥ 40 | Good |
+| ≥ 15 | Marginal |
+| < 15 | Unlikely |
+
+### Geolocation Class
+
+| Score & freq condition | Class |
+|----------------------|-------|
+| score ≥ 60 and f > 1 GHz | High |
+| score ≥ 30 | Medium |
+| score ≥ 10 | Low |
+| otherwise | None |
+
+Accuracy: **Simplified educational approximation** — not an operational
+SIGINT model.  All outputs should be treated as illustrative.
+
+---
+
 ## Unit Conversions
 
 > Source: [`js/units.js`](js/units.js)
