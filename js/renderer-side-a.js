@@ -110,17 +110,30 @@ export function renderSideAView(canvas, scenario, viewState, layerState, interac
     }
   }
 
-  // 10. Markers
+  // 10a. RF link lines
+  if (isLayerVisible(layerState, 'rfLinks', AXIS)) {
+    for (const obj of projected) {
+      if (obj.type !== 'link') continue;
+      const end = projectOrthographic({ x: obj.endX, y: obj.endY, z: obj.endZ }, AXIS, viewport);
+      drawLine(ctx, obj.px, obj.py, end.px, end.py, obj.color, false, 2);
+    }
+  }
+
+  // 10b. Markers
   const showLabels = isLayerVisible(layerState, 'labels', AXIS);
   for (const obj of projected) {
-    if (obj.type === 'earth' || obj.type === 'moon') continue;
-    if (obj.type === 'observer'  && !isLayerVisible(layerState, 'observers', AXIS)) continue;
-    if (obj.type === 'target'    && !isLayerVisible(layerState, 'targets', AXIS)) continue;
-    if (obj.type === 'satellite' && !isLayerVisible(layerState, 'trackedObjects', AXIS)) continue;
+    if (obj.type === 'earth' || obj.type === 'moon' || obj.type === 'link') continue;
+    if (obj.type === 'observer'       && !isLayerVisible(layerState, 'observers', AXIS)) continue;
+    if (obj.type === 'target'         && !isLayerVisible(layerState, 'targets', AXIS)) continue;
+    if (obj.type === 'satellite'      && !isLayerVisible(layerState, 'trackedObjects', AXIS)) continue;
+    if (obj.type === 'ground_station' && !isLayerVisible(layerState, 'groundStations', AXIS)) continue;
+    if (obj.type === 'launch_site'    && !isLayerVisible(layerState, 'launchSites', AXIS)) continue;
+    if (obj.type === 'transfer_arc')  continue;
 
     const isSel = obj.id === selectedId;
     const isHov = obj.id === hoveredId;
-    drawMarkerDot(ctx, obj.px, obj.py, obj.color, 5,
+    const size = obj.type === 'ground_station' ? 7 : 5;
+    drawMarkerDot(ctx, obj.px, obj.py, obj.color, size,
       showLabels ? obj.label : undefined, isSel, isHov);
   }
 
