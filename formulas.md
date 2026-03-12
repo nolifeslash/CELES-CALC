@@ -559,7 +559,7 @@ where:
 - G_r = receive antenna gain (dBi)
 - L_atm = atmospheric / rain attenuation (dB)
 - L_point = pointing loss (dB)
-- L_pol = polarisation mismatch loss (dB)
+- L_pol = polarization mismatch loss (dB)
 - L_misc = miscellaneous implementation loss (dB)
 
 Accuracy: **Standard engineering approximation** (individual loss terms are
