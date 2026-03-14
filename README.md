@@ -106,7 +106,11 @@ Toggle visibility using the layer checkboxes in the visualizer sidebar. Labels s
 
 ### Validation
 
-`js/infra-validate.js` provides `validateInfrastructure()` which checks:
+`js/infra-validate.js` provides:
+- `validateInfrastructure()` / `runInfrastructureSmokeChecks()` for data/schema integrity checks
+- `runUiSmokeChecks()` for lightweight Infrastructure-tab UI wiring checks
+
+Infrastructure checks cover:
 - Required fields present on all records
 - Coordinate plausibility
 - Confidence values in [0, 1]
@@ -353,15 +357,21 @@ python3 serve.py 9000       # use a custom port
 ### Option 3 — Other local servers
 
 ```bash
-# Python 3 built-in
-python3 -m http.server 8080
-# then open http://localhost:8080
+# Recommended Python built-in static server
+python -m http.server 8000
+# Windows launcher equivalent
+py -m http.server 8000
+# Explicit python3 binary
+python3 -m http.server 8000
+# then open http://localhost:8000
 
 # Node.js (npx)
 npx serve .
 ```
 
-Open `http://localhost:8080` for the Calculator. The Visualizer button will open `visualizer.html` automatically.
+Open `http://localhost:8000` for the Calculator. The Visualizer button will open `visualizer.html` automatically.
+
+> **Why local HTTP mode is preferred:** module loading, two-window Calculator↔Visualizer sync (`BroadcastChannel` + `localStorage`), and popup/open-window behavior are more reliable under `http://localhost` than direct `file://` opening.
 
 ---
 

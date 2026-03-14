@@ -265,13 +265,100 @@ export function validateInfrastructure() {
 }
 
 /**
+ * Run infrastructure-only smoke checks (schema + filter behavior + RF normalization).
+ * Alias kept explicit for dev-facing checks in browser console and docs.
+ *
+ * @returns {ValidationResult}
+ */
+export function runInfrastructureSmokeChecks() {
+  return validateInfrastructure();
+}
+
+/**
+ * Lightweight UI smoke checks for Infrastructure tab wiring.
+ * Safe to run in browser at any time; does not throw on missing DOM.
+ *
+ * @returns {ValidationResult}
+ */
+export function runUiSmokeChecks() {
+  const errors = [];
+  const requiredIds = [
+    'infra-launch-btn-filter',
+    'infra-ground-btn-filter',
+    'infra-ttc-btn-filter',
+    'infra-ops-btn-filter',
+    'infra-launch-list',
+    'infra-ground-list',
+    'infra-ttc-list',
+    'infra-ops-list',
+    'infra-inspector',
+    'infra-btn-validate',
+  ];
+  const behavioralCheckCount = 5; // launch, ground, TT&C, operator filters + normalization
+
+  if (typeof document === 'undefined') {
+    errors.push('UI smoke checks require a browser document context');
+  } else {
+    requiredIds.forEach(id => {
+      if (!document.getElementById(id)) {
+        errors.push(`Missing infrastructure UI element: #${id}`);
+      }
+    });
+  }
+
+  // Ensure deterministic filtering and non-empty seed set for browser list rendering.
+  const launchActive = filterLaunchSites(LAUNCH_SITES, { status: 'active' });
+  if (!Array.isArray(launchActive) || launchActive.length === 0) {
+    errors.push('Launch-site active filter returned no records');
+  }
+
+  const groundBandX = filterGroundStations(GROUND_STATIONS, { band: 'X' });
+  if (!Array.isArray(groundBandX) || groundBandX.length === 0) {
+    errors.push('Ground-station X-band filter returned no records');
+  }
+
+  const ttcBandS = filterTTCStations(TTC_STATIONS, { band: 'S' });
+  if (!Array.isArray(ttcBandS) || ttcBandS.length === 0) {
+    errors.push('TT&C S-band filter returned no records');
+  }
+
+  const governmentalOps = filterOperators(NETWORK_OPERATORS, { operatorType: 'governmental' });
+  if (!Array.isArray(governmentalOps) || governmentalOps.length === 0) {
+    errors.push('Operator-type filter returned no governmental operators');
+  }
+
+  const normalized = normalizeForRFEval(GROUND_STATIONS[0], { band: 'X' });
+  if (!normalized?.name || !normalized?.band) {
+    errors.push('normalizeForRFEval failed for infrastructure-selected station');
+  }
+
+  const totalChecks = requiredIds.length + behavioralCheckCount;
+  const failed = errors.length;
+  return {
+    pass: failed === 0,
+    total: totalChecks,
+    passed: totalChecks - failed,
+    failed,
+    errors,
+  };
+}
+
+/**
  * Render validation results into a DOM element.
  *
  * @param {HTMLElement} container  Target element for the results HTML.
  * @returns {ValidationResult}
  */
 export function renderValidationResults(container) {
-  const result = validateInfrastructure();
+  const infraResult = runInfrastructureSmokeChecks();
+  const uiResult = runUiSmokeChecks();
+  const result = {
+    pass: infraResult.pass && uiResult.pass,
+    total: infraResult.total + uiResult.total,
+    passed: infraResult.passed + uiResult.passed,
+    failed: infraResult.failed + uiResult.failed,
+    errors: [...infraResult.errors, ...uiResult.errors],
+  };
 
   let html = `<div class="card"><div class="card-title">Infrastructure Validation</div>`;
   html += `<div class="infra-inspector-row">
@@ -282,6 +369,15 @@ export function renderValidationResults(container) {
       </span>
       ${result.passed}/${result.total} checks passed
     </span>
+  </div>`;
+
+  html += `<div class="infra-inspector-row">
+    <span class="infra-inspector-label">Infrastructure Checks</span>
+    <span class="infra-inspector-value">${infraResult.passed}/${infraResult.total}</span>
+  </div>`;
+  html += `<div class="infra-inspector-row">
+    <span class="infra-inspector-label">UI Smoke Checks</span>
+    <span class="infra-inspector-value">${uiResult.passed}/${uiResult.total}</span>
   </div>`;
 
   if (result.errors.length > 0) {
