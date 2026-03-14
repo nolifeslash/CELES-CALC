@@ -33,7 +33,7 @@ import * as DeltaVBudget    from './js/delta-v-budget.js';
 import * as LunarTransfer   from './js/lunar-transfer.js';
 import * as Infrastructure  from './js/infrastructure.js';
 import { initInfrastructureBrowser } from './js/infrastructure-browser.js';
-import { renderValidationResults } from './js/infra-validate.js';
+import { renderValidationResults, runInfrastructureSmokeChecks, runUiSmokeChecks, runScenarioRoundTripChecks } from './js/infra-validate.js';
 
 /* ================================================================
    State
@@ -125,7 +125,12 @@ async function importScenario(file) {
   if (!file) return;
   try {
     const s = await Sync.importScenarioFile(file);
-    _currentScenario = s;
+    _currentScenario = Scenario.migrateScenario(s);
+    const validation = Scenario.validateScenario(_currentScenario);
+    if (!validation.valid) {
+      UI.showToast(`Imported with ${validation.errors.length} warning(s); defaults applied`, 'warn');
+    }
+    _syncUiFromScenario(_currentScenario);
     UI.showToast('Scenario imported', 'ok');
     syncPublish();
   } catch (err) {
@@ -967,13 +972,27 @@ function calcLinkBudget() {
     { label: 'Max Throughput',    value: (result.maxThroughput_bps / 1e6).toFixed(2), unit: 'Mbps' },
   ], 'Link Budget Results');
 
-  _patchScenario({ rfScenario: { linkBudget: result, band: bandName, weather } });
+  _patchScenario({
+    rfScenario: { linkBudget: result, band: bandName, weather },
+    links: [{
+      label: `Link budget (${bandName})`,
+      margin_dB: result.margin_dB,
+      cn0_dBHz: result.cn0_dBHz,
+      ebN0_dB: result.ebN0_dB,
+      requiredEbN0_dB: result.requiredEbN0_dB,
+    }],
+  });
 }
 
 function calcStationComparison() {
   const alt  = UI.validateNumber('st-alt'); if (alt  === null) return;
   const inc  = UI.validateNumber('st-inc'); if (inc  === null) return;
-  const band = document.getElementById('st-band').value;
+  const selectedBand = document.getElementById('st-band').value;
+  const supportedBands = new Set(['L', 'S', 'C', 'X', 'Ku', 'Ka']);
+  const band = supportedBands.has(selectedBand) ? selectedBand : 'X';
+  if (band !== selectedBand) {
+    UI.showToast(`Unsupported band "${selectedBand}" — falling back to X-band`, 'warn');
+  }
   const weather = document.getElementById('st-weather').value;
   const optMode = document.getElementById('st-optmode').value;
 
@@ -981,31 +1000,83 @@ function calcStationComparison() {
   const infraRecords = [
     ...Infrastructure.GROUND_STATIONS,
     ...Infrastructure.TTC_STATIONS,
-  ];
-  const normalizedRecords = infraRecords.map(r => Infrastructure.normalizeForRFEval(r, { band }));
+  ].filter(r => Number.isFinite(Number(r?.lat_deg)) && Number.isFinite(Number(r?.lon_deg)));
+  const selectedStation = _currentScenario?.infrastructure?.selectedStation;
+  if (selectedStation?.name && selectedStation?.infraId
+      && !infraRecords.some(r => r.id === selectedStation.infraId)) {
+    infraRecords.push({
+      id: selectedStation.infraId,
+      name: selectedStation.name,
+      lat_deg: selectedStation.lat_deg,
+      lon_deg: selectedStation.lon_deg,
+      elevation_m: selectedStation.alt_m ?? 0,
+      supportedBands: selectedStation.band ? [selectedStation.band] : ['X'],
+      capabilities: selectedStation.capabilities ?? [],
+      antennas: Number.isFinite(Number(selectedStation.antennaGain_dBi))
+        ? [{ id: 'selected', gainDb: Number(selectedStation.antennaGain_dBi), bands: [selectedStation.band || 'X'] }]
+        : [],
+      confidence: Number.isFinite(Number(selectedStation.confidence)) ? Number(selectedStation.confidence) : 0,
+      sourceRecords: selectedStation.sourceRecords ?? [],
+      operator: 'Selected from scenario',
+      status: 'active',
+    });
+  }
+
+  const normalizedRecords = infraRecords.map(r => Infrastructure.normalizeForRFEval(r, { band }))
+    .filter(r => Number.isFinite(r.lat_deg) && Number.isFinite(r.lon_deg));
+  if (normalizedRecords.length === 0) {
+    UI.renderAlert('satcom-st-results', 'No valid station records available for comparison.', 'warn');
+    return;
+  }
   const stations = Groundstations.loadStations(normalizedRecords);
 
   const ranked = Groundstations.rankStations(stations, {
     orbitAlt_km: alt, inclination_deg: inc, band, weatherPreset: weather, optimizationMode: optMode,
   });
 
-  const headers = ['Rank', 'Station', 'Score', 'Margin (dB)', 'Coverage', 'Availability', 'Confidence'];
+  const headers = ['Rank', 'Station', 'Technical Score', 'Margin', 'Confidence', 'Recommendation'];
   const rows = ranked.map((r, i) => {
     const infraId = r.station?.infraId;
     const orig = infraRecords.find(s => s.id === infraId);
-    const confLabel = orig ? Infrastructure.confidenceLabel(orig.confidence) : '—';
+    const confValue = Number(orig?.confidence);
+    const confLabel = Number.isFinite(confValue) ? Infrastructure.confidenceLabel(confValue) : 'unknown';
+    const recommendation = r.score >= 0.7 ? 'Recommended'
+      : r.score >= 0.5 ? 'Conditional'
+      : 'Low confidence fit';
     return [
       i + 1,
       r.station?.name ?? '—',
       typeof r.score === 'number' ? r.score.toFixed(1) : '—',
-      typeof r.margin === 'number' ? r.margin.toFixed(1) : '—',
-      typeof r.coverage === 'number' ? (r.coverage * 100).toFixed(0) + '%' : '—',
-      typeof r.availability === 'number' ? (r.availability * 100).toFixed(0) + '%' : '—',
+      typeof r.margin === 'number' ? r.margin.toFixed(2) : '—',
       confLabel,
+      recommendation,
     ];
   });
   UI.renderTable('satcom-st-results', headers, rows, 'Ground Station Ranking (Infrastructure DB)');
-  _patchScenario({ rfScenario: { stationComparison: ranked } });
+  const recommendations = ranked.map((r, i) => {
+    const infraId = r.station?.infraId;
+    const orig = infraRecords.find(s => s.id === infraId) ?? {};
+    return {
+      id: infraId ?? `rank-${i + 1}`,
+      name: r.station?.name ?? `Station ${i + 1}`,
+      lat_deg: r.station?.lat_deg,
+      lon_deg: r.station?.lon_deg,
+      score: r.score,
+      margin: r.margin,
+      coverage: r.coverage,
+      availability: r.availability,
+      resilience: r.resilience,
+      technicalScore: r.score,
+      confidence: Number.isFinite(Number(orig.confidence)) ? Number(orig.confidence) : 0,
+      recommendation: r.score >= 0.7 ? 'recommended' : (r.score >= 0.5 ? 'conditional' : 'low-fit'),
+      precisionLabel: r.precisionLabel,
+    };
+  });
+  _patchScenario({
+    rfScenario: { stationComparison: ranked, selectedBand: band, weather },
+    groundStationRecommendations: recommendations,
+    infrastructureDataRefs: { selectedStationId: selectedStation?.infraId ?? null },
+  });
 }
 
 function calcRouteComparison() {
@@ -1018,10 +1089,31 @@ function calcRouteComparison() {
 
   const route1 = SatcomNetwork.computeRoute([leg1]);
   const route2 = SatcomNetwork.computeRoute([leg2]);
-  const comparison = SatcomNetwork.compareRoutes([
+  const routeOptions = [
     { name: 'Direct Short Path', route: route1 },
     { name: 'Relay Long Path',  route: route2 },
-  ]);
+  ];
+  const selectedStation = _currentScenario?.infrastructure?.selectedStation;
+  if (_isValidInfrastructureStation(selectedStation)) {
+    const viaStationLegA = SatcomNetwork.computeRouteLeg({
+      distance_m: Math.max(1, d1 * 1e3 * 0.6),
+      freq_Hz: freq * 1e9,
+      label: `Uplink via ${selectedStation.name}`,
+    });
+    const viaStationLegB = SatcomNetwork.computeRouteLeg({
+      distance_m: Math.max(1, d2 * 1e3 * 0.6),
+      freq_Hz: freq * 1e9,
+      label: `Downlink via ${selectedStation.name}`,
+    });
+    const viaRoute = SatcomNetwork.computeRoute([viaStationLegA, viaStationLegB]);
+    routeOptions.push({ name: `Via Selected Station (${selectedStation.name})`, route: viaRoute });
+  }
+  const validRouteOptions = routeOptions.filter(r => Array.isArray(r.route?.legs) && r.route.legs.length > 0);
+  if (validRouteOptions.length === 0) {
+    UI.renderAlert('satcom-rt-results', 'No valid route options available.', 'warn');
+    return;
+  }
+  const comparison = SatcomNetwork.compareRoutes(validRouteOptions);
 
   const items = comparison.ranked.map((r, i) => ({
     label: `#${i + 1} ${r.name}`,
@@ -1029,7 +1121,11 @@ function calcRouteComparison() {
   }));
   items.push({ label: 'Recommended', value: comparison.recommended, variant: 'hl' });
   UI.renderResultCards('satcom-rt-results', items, 'Route Comparison');
-  _patchScenario({ rfScenario: { routeComparison: comparison } });
+  _patchScenario({
+    rfScenario: { routeComparison: comparison },
+    networkRoutes: comparison.ranked,
+    infrastructureDataRefs: { selectedStationId: selectedStation?.infraId ?? null },
+  });
 }
 
 function calcInterference() {
@@ -1140,12 +1236,17 @@ function wireInfrastructureTab() {
   }
 
   // Initialize browser with callback that populates station comparison
-  initInfrastructureBrowser(station => {
+  initInfrastructureBrowser(payload => {
+    const station = payload?.station ?? payload;
+    if (!station) return;
     // Push selected station into station comparison inputs
     const bandEl = document.getElementById('st-band');
     if (bandEl && station.band) bandEl.value = station.band;
     UI.showToast(`Station "${station.name}" queued for RF comparison — switch to RF/SATCOM tab`, 'ok');
-    _patchScenario({ infrastructure: { selectedStation: station } });
+    _patchScenario({
+      infrastructure: { selectedStation: station },
+      infrastructureDataRefs: { selectedStationId: station?.infraId ?? null },
+    });
   });
 
   // Also handle the CustomEvent for use-in-RF
@@ -1155,7 +1256,10 @@ function wireInfrastructureTab() {
     const bandEl = document.getElementById('st-band');
     if (bandEl && station.band) bandEl.value = station.band;
     UI.showToast(`Station "${station.name}" queued for RF comparison`, 'ok');
-    _patchScenario({ infrastructure: { selectedStation: station } });
+    _patchScenario({
+      infrastructure: { selectedStation: station },
+      infrastructureDataRefs: { selectedStationId: station?.infraId ?? null },
+    });
   });
 
   // Handle use-in-launch-planner CustomEvent
@@ -1163,7 +1267,10 @@ function wireInfrastructureTab() {
     const site = e.detail?.site;
     if (!site) return;
     UI.showToast(`Launch site "${site.name}" — switch to Launch Planner tab`, 'ok');
-    _patchScenario({ infrastructure: { selectedLaunchSite: site } });
+    _patchScenario({
+      infrastructure: { selectedLaunchSite: site },
+      infrastructureDataRefs: { selectedLaunchSiteId: site?.id ?? null },
+    });
   });
 
   // Wire the validation sub-tab button
@@ -1384,6 +1491,22 @@ function _patchScenario(patch) {
   syncPublish();
 }
 
+function _syncUiFromScenario(scenario) {
+  const selectedBand = scenario?.infrastructure?.selectedStation?.band;
+  const bandEl = document.getElementById('st-band');
+  if (bandEl && selectedBand) {
+    bandEl.value = selectedBand;
+  }
+}
+
+function _isValidInfrastructureStation(station) {
+  return !!station
+    && Number.isFinite(Number(station.lat_deg))
+    && Number.isFinite(Number(station.lon_deg))
+    && typeof station.name === 'string'
+    && station.name.trim() !== '';
+}
+
 /* ================================================================
    ── ACCEPTANCE TESTS ─────────────────────────────────────────
    ================================================================ */
@@ -1461,6 +1584,9 @@ export function runAcceptanceTests() {
       const r = LunarTransfer.estimateTLI(400);
       return r.deltaV_m_s > 3000 && r.deltaV_m_s < 3300;
     }},
+    { name: 'Infrastructure: smoke checks pass', fn: () => runInfrastructureSmokeChecks().pass },
+    { name: 'Infrastructure UI: smoke checks pass', fn: () => runUiSmokeChecks().pass },
+    { name: 'Scenario: round-trip checks pass', fn: () => runScenarioRoundTripChecks().pass },
   ];
 
   const area = document.getElementById('test-results-area');

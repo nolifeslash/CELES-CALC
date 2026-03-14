@@ -107,6 +107,10 @@ export function createEmptyScenario() {
     missionLegs:       [],
     deltaVBudget:      {},
     infrastructureDataRefs: {},
+    infrastructure: {
+      selectedStation: null,
+      selectedLaunchSite: null,
+    },
   };
 }
 
@@ -215,6 +219,12 @@ export function buildScenarioState(inputs = {}) {
   }
   if (inputs.precisionLabels && typeof inputs.precisionLabels === 'object') {
     scenario.precisionLabels = { ...inputs.precisionLabels };
+  }
+  if (inputs.infrastructure && typeof inputs.infrastructure === 'object') {
+    scenario.infrastructure = {
+      ...scenario.infrastructure,
+      ...inputs.infrastructure,
+    };
   }
 
   return scenario;
@@ -396,6 +406,9 @@ export function validateScenario(scenario) {
       errors.push(`${label} must be an array.`);
     }
   }
+  if (scenario.rfScenario !== undefined && typeof scenario.rfScenario !== 'object') {
+    errors.push('scenario.rfScenario must be an object.');
+  }
 
   // ── Launch / Transfer arrays ─────────────────────────────────────────────
   const launchArrayFields = [
@@ -409,6 +422,14 @@ export function validateScenario(scenario) {
     if (scenario[field] !== undefined && !Array.isArray(scenario[field])) {
       errors.push(`${label} must be an array.`);
     }
+  }
+  if (scenario.infrastructureDataRefs !== undefined &&
+      (typeof scenario.infrastructureDataRefs !== 'object' || scenario.infrastructureDataRefs === null)) {
+    errors.push('scenario.infrastructureDataRefs must be an object.');
+  }
+  if (scenario.infrastructure !== undefined &&
+      (typeof scenario.infrastructure !== 'object' || scenario.infrastructure === null)) {
+    errors.push('scenario.infrastructure must be an object.');
   }
 
   return { valid: errors.length === 0, errors };

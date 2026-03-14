@@ -87,7 +87,7 @@ function _applyLaunchFilter() {
     siteType: _val('infra-launch-filter-sitetype'),
     text:     _val('infra-launch-filter-text').trim(),
   });
-  _renderList('infra-launch-list', filterLaunchSites(LAUNCH_SITES,   _compact(_filters.launch)), 'launch_site');
+  _renderList('infra-launch-list', filterLaunchSites(_safeArray(LAUNCH_SITES), _compact(_filters.launch)), 'launch_site');
 }
 
 function _applyGroundFilter() {
@@ -97,7 +97,7 @@ function _applyGroundFilter() {
     band:    _val('infra-ground-filter-band').trim(),
     text:    _val('infra-ground-filter-text').trim(),
   });
-  _renderList('infra-ground-list', filterGroundStations(GROUND_STATIONS, _compact(_filters.ground)), 'ground_station');
+  _renderList('infra-ground-list', filterGroundStations(_safeArray(GROUND_STATIONS), _compact(_filters.ground)), 'ground_station');
 }
 
 function _applyTTCFilter() {
@@ -107,7 +107,7 @@ function _applyTTCFilter() {
     band:    _val('infra-ttc-filter-band').trim(),
     text:    _val('infra-ttc-filter-text').trim(),
   });
-  _renderList('infra-ttc-list', filterTTCStations(TTC_STATIONS, _compact(_filters.ttc)), 'ttc_station');
+  _renderList('infra-ttc-list', filterTTCStations(_safeArray(TTC_STATIONS), _compact(_filters.ttc)), 'ttc_station');
 }
 
 function _applyOpsFilter() {
@@ -115,12 +115,18 @@ function _applyOpsFilter() {
     operatorType: _val('infra-ops-filter-type'),
     text:         _val('infra-ops-filter-text').trim(),
   });
-  _renderList('infra-ops-list', filterOperators(NETWORK_OPERATORS, _compact(_filters.ops)), 'operator');
+  _renderList('infra-ops-list', filterOperators(_safeArray(NETWORK_OPERATORS), _compact(_filters.ops)), 'operator');
 }
 
 function _applyGlobalSearch() {
   const query = _val('infra-search-global').trim();
-  if (!query) return;
+  const panel = document.getElementById('infra-inspector');
+  if (!query) {
+    if (!panel) return;
+    _setInspectorHTML('<p class="infra-empty">Enter a search query.</p>');
+    panel.classList.remove('infra-inspector--hidden');
+    return;
+  }
   const res = searchInfrastructure(query);
   const sections = [
     { label: 'Launch Sites',      type: 'launch_site',    items: res.launchSites },
@@ -130,7 +136,6 @@ function _applyGlobalSearch() {
   ].filter(s => s.items.length > 0);
 
   const total = sections.reduce((n, s) => n + s.items.length, 0);
-  const panel = document.getElementById('infra-inspector');
   if (!panel) return;
 
   if (total === 0) {
@@ -160,10 +165,10 @@ function _applyGlobalSearch() {
    ================================================================ */
 
 function _renderAll() {
-  _renderList('infra-launch-list', filterLaunchSites(LAUNCH_SITES,     _compact(_filters.launch)), 'launch_site');
-  _renderList('infra-ground-list', filterGroundStations(GROUND_STATIONS, _compact(_filters.ground)), 'ground_station');
-  _renderList('infra-ttc-list',    filterTTCStations(TTC_STATIONS,      _compact(_filters.ttc)),    'ttc_station');
-  _renderList('infra-ops-list',    filterOperators(NETWORK_OPERATORS,   _compact(_filters.ops)),    'operator');
+  _renderList('infra-launch-list', filterLaunchSites(_safeArray(LAUNCH_SITES), _compact(_filters.launch)), 'launch_site');
+  _renderList('infra-ground-list', filterGroundStations(_safeArray(GROUND_STATIONS), _compact(_filters.ground)), 'ground_station');
+  _renderList('infra-ttc-list',    filterTTCStations(_safeArray(TTC_STATIONS), _compact(_filters.ttc)), 'ttc_station');
+  _renderList('infra-ops-list',    filterOperators(_safeArray(NETWORK_OPERATORS), _compact(_filters.ops)), 'operator');
 }
 
 /**
@@ -175,9 +180,10 @@ function _renderAll() {
 function _renderList(containerId, items, type) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = items.length === 0
+  const safeItems = _safeArray(items);
+  container.innerHTML = safeItems.length === 0
     ? '<p class="infra-empty">No records match the current filters.</p>'
-    : items.map(item => _itemCardHTML(item, type)).join('');
+    : safeItems.map(item => _itemCardHTML(item, type)).join('');
 
   if (_selectedRecord) {
     container.querySelector(`[data-id="${_selectedRecord.id}"]`)?.classList.add('infra-item--active');
@@ -191,14 +197,15 @@ function _renderList(containerId, items, type) {
  * @returns {string}
  */
 function _itemCardHTML(item, type) {
-  const statusCls = `status-${_esc((item.status ?? 'unknown').replace(/\s+/g, '-'))}`;
-  return `<div class="infra-item" data-id="${_esc(item.id)}" data-type="${_esc(type)}">
+  const rec = (item && typeof item === 'object') ? item : {};
+  const statusCls = `status-${_esc((rec.status ?? 'unknown').replace(/\s+/g, '-'))}`;
+  return `<div class="infra-item" data-id="${_esc(rec.id)}" data-type="${_esc(type)}">
   <div class="infra-item-header">
-    <span class="infra-item-name">${_esc(item.name)}</span>
-    ${confidenceBadge(item.confidence)}
-    <span class="infra-item-status ${statusCls}">${_esc(item.status ?? '—')}</span>
+    <span class="infra-item-name">${_esc(rec.name ?? 'Unnamed')}</span>
+    ${confidenceBadge(_safeConfidence(rec.confidence))}
+    <span class="infra-item-status ${statusCls}">${_esc(rec.status ?? '—')}</span>
   </div>
-  <div class="infra-item-meta">${_metaLine(item, type)}</div>
+  <div class="infra-item-meta">${_metaLine(rec, type)}</div>
 </div>`;
 }
 
@@ -226,9 +233,11 @@ function _metaLine(item, type) {
 function _showInspector(record, type) {
   const panel = document.getElementById('infra-inspector');
   if (!panel) return;
+  const rec = (record && typeof record === 'object') ? record : {};
 
   const typeLabel = { launch_site: 'Launch Site', ground_station: 'Ground Station', ttc_station: 'TT&C Station', operator: 'Network Operator' }[type] ?? type;
-  const statusCls = `status-${_esc((record.status ?? 'unknown').replace(/\s+/g, '-'))}`;
+  const statusCls = `status-${_esc((rec.status ?? 'unknown').replace(/\s+/g, '-'))}`;
+  const confidence = _safeConfidence(rec.confidence);
 
   const row = (label, value) => value
     ? `<div class="infra-detail-section"><strong>${label}</strong><span>${value}</span></div>`
@@ -236,52 +245,57 @@ function _showInspector(record, type) {
 
   let html = `<div class="infra-detail-card">
   <div class="infra-detail-header">
-    <span class="infra-detail-name">${_esc(record.name)}</span>
+    <span class="infra-detail-name">${_esc(rec.name ?? 'Unnamed')}</span>
     <span class="infra-type-badge">${_esc(typeLabel)}</span>
-    ${confidenceBadge(record.confidence)}
+    ${confidenceBadge(confidence)}
   </div>
-  <div class="infra-detail-id">ID: <code>${_esc(record.id)}</code></div>`;
+  <div class="infra-detail-id">ID: <code>${_esc(rec.id)}</code></div>`;
 
-  if (type !== 'operator' && record.lat_deg != null)
-    html += row('Location', `${record.lat_deg.toFixed(4)}°, ${record.lon_deg.toFixed(4)}°${record.elevation_m != null ? ` — ${record.elevation_m} m elev.` : ''}`);
-
-  html += `<div class="infra-detail-section"><strong>Status</strong><span class="${statusCls}">${_esc(record.status ?? '—')}</span></div>`;
-
-  if (record.operator || record.network)
-    html += row(record.network ? 'Network / Operator' : 'Operator', _esc([record.network, record.operator].filter(Boolean).join(' — ')));
-
-  if (type === 'launch_site') {
-    html += row('Vehicle Classes', _esc((record.supportedVehicleClasses ?? []).join(', ')));
-    html += row('Azimuth', _esc(record.nominalAzimuthNotes ?? ''));
-    html += row('Inclination', _esc(record.typicalInclinationNotes ?? ''));
-  } else if (type === 'ground_station' || type === 'ttc_station') {
-    html += row('Bands', _esc((record.supportedBands ?? []).join(', ')));
-    const capList = record.capabilities ?? record.services ?? [];
-    html += row(record.capabilities ? 'Capabilities' : 'Services', _esc(capList.join(', ')));
-  } else if (type === 'operator') {
-    html += row('Roles', _esc((record.networkRoles ?? []).join(', ')));
-    html += row('Coverage', _esc(record.coverageDescription ?? ''));
-    if (record.stationCount != null) html += row('Stations', String(record.stationCount));
+  if (type !== 'operator' && _isValidCoordinate(rec.lat_deg, rec.lon_deg)) {
+    const elev = Number.isFinite(Number(rec.elevation_m)) ? Number(rec.elevation_m) : null;
+    html += row('Location', `${Number(rec.lat_deg).toFixed(4)}°, ${Number(rec.lon_deg).toFixed(4)}°${elev != null ? ` — ${elev} m elev.` : ''}`);
   }
 
-  const antennas = record.antennas ?? [];
+  html += `<div class="infra-detail-section"><strong>Status</strong><span class="${statusCls}">${_esc(rec.status ?? '—')}</span></div>`;
+
+  if (rec.operator || rec.network)
+    html += row(rec.network ? 'Network / Operator' : 'Operator', _esc([rec.network, rec.operator].filter(Boolean).join(' — ')));
+
+  if (type === 'launch_site') {
+    html += row('Vehicle Classes', _esc(_safeArray(rec.supportedVehicleClasses).join(', ')));
+    html += row('Azimuth', _esc(rec.nominalAzimuthNotes ?? ''));
+    html += row('Inclination', _esc(rec.typicalInclinationNotes ?? ''));
+  } else if (type === 'ground_station' || type === 'ttc_station') {
+    html += row('Bands', _esc(_safeArray(rec.supportedBands).join(', ')));
+    const capList = _safeArray(rec.capabilities ?? rec.services);
+    html += row(rec.capabilities ? 'Capabilities' : 'Services', _esc(capList.join(', ')));
+  } else if (type === 'operator') {
+    html += row('Roles', _esc(_safeArray(rec.networkRoles).join(', ')));
+    html += row('Coverage', _esc(rec.coverageDescription ?? ''));
+    if (rec.stationCount != null) html += row('Stations', String(rec.stationCount));
+  }
+
+  const antennas = _safeArray(rec.antennas).filter(a => a && typeof a === 'object');
   if (antennas.length)
     html += `<div class="infra-detail-section"><strong>Antennas</strong><ul class="infra-antenna-list">${
-      antennas.map(a => `<li>${_esc(a.id)} — ${a.diameter_m} m — ${_esc((a.bands ?? []).join(', '))} — ${a.gainDb} dBi</li>`).join('')
+      antennas.map(a => `<li>${_esc(a.id)} — ${_esc(a.diameter_m ?? '—')} m — ${_esc(_safeArray(a.bands).join(', '))} — ${_esc(a.gainDb ?? '—')} dBi</li>`).join('')
     }</ul></div>`;
 
-  html += row('Confidence', `${confidenceBadge(record.confidence)} (${record.confidence.toFixed(2)})`);
+  html += row('Confidence', `${confidenceBadge(confidence)} (${confidenceLabel(confidence)})`);
 
-  if (record.sourceRecords?.length)
+  if (_safeArray(rec.sourceRecords).length)
     html += `<div class="infra-detail-section"><strong>Sources</strong><ul class="infra-source-list">${
-      record.sourceRecords.map(sr => `<li>${_esc(sr.source)} <em>(${_esc(sr.date)})</em> — ${confidenceBadge(sr.confidence)}</li>`).join('')
+      _safeArray(rec.sourceRecords).map(sr => {
+        const src = (sr && typeof sr === 'object') ? sr : {};
+        return `<li>${_esc(src.source ?? 'Unknown source')} <em>(${_esc(src.date ?? 'n/a')})</em> — ${confidenceBadge(_safeConfidence(src.confidence))}</li>`;
+      }).join('')
     }</ul></div>`;
 
-  if (record.notes) html += row('Notes', `<p class="infra-notes">${_esc(record.notes)}</p>`);
+  if (rec.notes) html += row('Notes', `<p class="infra-notes">${_esc(rec.notes)}</p>`);
 
-  if (record.tags?.length)
+  if (_safeArray(rec.tags).length)
     html += `<div class="infra-detail-section"><strong>Tags</strong><div class="infra-tags">${
-      record.tags.map(t => `<span class="infra-tag">${_esc(t)}</span>`).join(' ')
+      _safeArray(rec.tags).map(t => `<span class="infra-tag">${_esc(t)}</span>`).join(' ')
     }</div></div>`;
 
   html += '<div class="infra-detail-actions">';
@@ -291,17 +305,17 @@ function _showInspector(record, type) {
     html += `<button class="btn btn-primary btn-sm" id="btn-infra-use-launch">Use in Launch Planner ▶</button>`;
   html += '</div></div>';
 
-  panel.innerHTML = html;
+  _setInspectorHTML(html);
 
   panel.querySelector('#btn-infra-use-rf')?.addEventListener('click', () => {
-    const band       = record.supportedBands?.[0] ?? 'X';
-    const normalized = normalizeForRFEval(record, { band });
+    const band       = _safeArray(rec.supportedBands)[0] ?? 'X';
+    const normalized = normalizeForRFEval(rec, { band });
     document.dispatchEvent(new CustomEvent('infra:selectstation', { detail: { station: normalized }, bubbles: true }));
     if (typeof _onSelectStation === 'function') _onSelectStation({ station: normalized });
   });
 
   panel.querySelector('#btn-infra-use-launch')?.addEventListener('click', () =>
-    document.dispatchEvent(new CustomEvent('infra:selectlaunchsite', { detail: { site: record }, bubbles: true }))
+    document.dispatchEvent(new CustomEvent('infra:selectlaunchsite', { detail: { site: rec }, bubbles: true }))
   );
   panel.classList.remove('infra-inspector--hidden');
 }
@@ -314,7 +328,7 @@ function _clearInspector() {
   const panel = document.getElementById('infra-inspector');
   if (panel) {
     panel.classList.add('infra-inspector--hidden');
-    panel.innerHTML = '';
+    _setInspectorHTML('');
   }
 }
 
@@ -372,7 +386,12 @@ function _compact(obj) {
  * @returns {object|null}
  */
 function _findRecord(id, type) {
-  const map = { launch_site: LAUNCH_SITES, ground_station: GROUND_STATIONS, ttc_station: TTC_STATIONS, operator: NETWORK_OPERATORS };
+  const map = {
+    launch_site: _safeArray(LAUNCH_SITES),
+    ground_station: _safeArray(GROUND_STATIONS),
+    ttc_station: _safeArray(TTC_STATIONS),
+    operator: _safeArray(NETWORK_OPERATORS),
+  };
   return (map[type] ?? []).find(s => s.id === id) ?? null;
 }
 
@@ -383,4 +402,32 @@ function _findRecord(id, type) {
  */
 function _esc(value) {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function _safeConfidence(value) {
+  const c = Number(value);
+  if (!Number.isFinite(c)) return 0;
+  return Math.max(0, Math.min(1, c));
+}
+
+function _isValidCoordinate(lat, lon) {
+  const latNum = Number(lat);
+  const lonNum = Number(lon);
+  return Number.isFinite(latNum) && Number.isFinite(lonNum)
+    && latNum >= -90 && latNum <= 90
+    && lonNum >= -180 && lonNum <= 180;
+}
+
+function _setInspectorHTML(html) {
+  const body = document.getElementById('infra-inspector-body');
+  if (body) {
+    body.innerHTML = html;
+    return;
+  }
+  const panel = document.getElementById('infra-inspector');
+  if (panel) panel.innerHTML = html;
 }

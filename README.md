@@ -109,6 +109,7 @@ Toggle visibility using the layer checkboxes in the visualizer sidebar. Labels s
 `js/infra-validate.js` provides:
 - `validateInfrastructure()` / `runInfrastructureSmokeChecks()` for data/schema integrity checks
 - `runUiSmokeChecks()` for lightweight Infrastructure-tab UI wiring checks
+- `runScenarioRoundTripChecks()` for scenario import/export branch-preservation checks
 
 Infrastructure checks cover:
 - Required fields present on all records
@@ -370,6 +371,9 @@ npx serve .
 ```
 
 Open `http://localhost:8000` for the Calculator. The Visualizer button will open `visualizer.html` automatically.
+You can also open both windows directly:
+- Calculator: `http://localhost:8000/index.html`
+- Visualizer: `http://localhost:8000/visualizer.html`
 
 > **Why local HTTP mode is preferred:** module loading, two-window Calculator↔Visualizer sync (`BroadcastChannel` + `localStorage`), and popup/open-window behavior are more reliable under `http://localhost` than direct `file://` opening.
 
@@ -539,7 +543,7 @@ Visualizer (visualizer.html)
 - No EOP or light-time correction
 - 3D view uses canvas-based pseudo-perspective (not WebGL)
 - OMM fetching requires network access to CelesTrak (may be blocked by CORS in some environments)
-- Infrastructure database is seed-only (16 records total) — not a global directory
+- Infrastructure database is seed-only (31 records total in this pass) — not a global directory
 - Infrastructure visualizer overlays use simplified ECEF positioning (no LMST rotation) — positions are geographic, not sidereal-time-corrected
 - Station comparison scoring is a heuristic model (no measured link budgets)
 

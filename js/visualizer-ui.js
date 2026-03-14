@@ -133,7 +133,11 @@ export function setupVisualizerTabs() {
 }
 
 export function setupLayerToggles() {
-  const ids = ['grid','labels','orbits','sightlines','illumination','zones','measurements'];
+  const ids = [
+    'grid', 'labels', 'orbits', 'sightlines', 'illumination', 'zones', 'measurements',
+    'groundStations', 'rfLinks', 'launchSites', 'transferArcs',
+    'infraLaunchSites', 'infraGroundStations', 'infraTTCStations',
+  ];
   for (const id of ids) {
     const el = document.getElementById(`layer-${id}`);
     if (!el) continue;
