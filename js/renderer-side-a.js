@@ -140,15 +140,17 @@ export function renderSideAView(canvas, scenario, viewState, layerState, interac
 
   // 10c. Infrastructure overlays (static seed data)
   const earthObj = byId['earth'];
+  const selectedStationId = scenario?.infrastructure?.selectedStation?.infraId ?? null;
+  const selectedLaunchSiteId = scenario?.infrastructure?.selectedLaunchSite?.id ?? null;
   if (earthObj) {
     if (isLayerVisible(layerState, 'infraLaunchSites', AXIS)) {
-      _drawInfraMarkers(ctx, LAUNCH_SITES, viewport, '#ff5722', 4, showLabels, AXIS);
+      _drawInfraMarkers(ctx, LAUNCH_SITES, viewport, '#ff5722', 4, showLabels, AXIS, selectedLaunchSiteId);
     }
     if (isLayerVisible(layerState, 'infraGroundStations', AXIS)) {
-      _drawInfraMarkers(ctx, GROUND_STATIONS, viewport, '#2196f3', 5, showLabels, AXIS);
+      _drawInfraMarkers(ctx, GROUND_STATIONS, viewport, '#2196f3', 5, showLabels, AXIS, selectedStationId);
     }
     if (isLayerVisible(layerState, 'infraTTCStations', AXIS)) {
-      _drawInfraMarkers(ctx, TTC_STATIONS, viewport, '#9c27b0', 5, showLabels, AXIS);
+      _drawInfraMarkers(ctx, TTC_STATIONS, viewport, '#9c27b0', 5, showLabels, AXIS, selectedStationId);
     }
   }
 
@@ -208,13 +210,16 @@ function _drawOrbitPath(ctx, orbitPoints, viewport, color) {
  * @param {string} axis   Projection axis.
  * @private
  */
-function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis) {
-  for (const rec of records) {
-    if (rec.lat_deg == null || rec.lon_deg == null) continue;
-    const pos = latLonToWorldKm(rec.lat_deg, rec.lon_deg);
+function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis, selectedId = null) {
+  for (const rec of (Array.isArray(records) ? records : [])) {
+    const lat = Number(rec?.lat_deg);
+    const lon = Number(rec?.lon_deg);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+    const pos = latLonToWorldKm(lat, lon);
     const { px, py } = projectOrthographic(pos, axis, viewport);
-    const label = showLabels ? rec.name : undefined;
-    drawMarkerDot(ctx, px, py, color, size, label, false, false);
+    const isSelected = selectedId != null && (rec?.id === selectedId || rec?.infraId === selectedId);
+    const label = (showLabels || isSelected) ? rec?.name : undefined;
+    drawMarkerDot(ctx, px, py, color, size, label, isSelected, false);
   }
 }
 

@@ -880,6 +880,10 @@ function _arrayContains(arr, needle) {
   return Array.isArray(arr) && arr.some(item => _contains(item, needle));
 }
 
+function _asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 // ─── Filtering functions ──────────────────────────────────────────────────────
 
 /**
@@ -901,7 +905,7 @@ function _arrayContains(arr, needle) {
  */
 export function filterLaunchSites(sites = LAUNCH_SITES, filter = {}) {
   const { status, country, siteType, vehicleClass, confidenceMin, text } = filter;
-  return sites.filter(s => {
+  return _asArray(sites).filter(s => {
     if (status        && !_contains(s.status,   status))        return false;
     if (country       && !_contains(s.country,  country))       return false;
     if (siteType      && !_contains(s.siteType, siteType))      return false;
@@ -940,7 +944,7 @@ export function filterLaunchSites(sites = LAUNCH_SITES, filter = {}) {
  */
 export function filterGroundStations(stations = GROUND_STATIONS, filter = {}) {
   const { status, country, band, capability, operatorId, confidenceMin, text } = filter;
-  return stations.filter(s => {
+  return _asArray(stations).filter(s => {
     if (status        && !_contains(s.status,   status))   return false;
     if (country       && !_contains(s.country,  country))  return false;
     if (band          && !_arrayContains(s.supportedBands,  band))       return false;
@@ -979,7 +983,7 @@ export function filterGroundStations(stations = GROUND_STATIONS, filter = {}) {
  */
 export function filterTTCStations(stations = TTC_STATIONS, filter = {}) {
   const { status, country, band, service, operatorId, confidenceMin, text } = filter;
-  return stations.filter(s => {
+  return _asArray(stations).filter(s => {
     if (status        && !_contains(s.status,   status))   return false;
     if (country       && !_contains(s.country,  country))  return false;
     if (band          && !_arrayContains(s.supportedBands, band))    return false;
@@ -1016,7 +1020,7 @@ export function filterTTCStations(stations = TTC_STATIONS, filter = {}) {
  */
 export function filterOperators(operators = NETWORK_OPERATORS, filter = {}) {
   const { operatorType, country, role, confidenceMin, text } = filter;
-  return operators.filter(op => {
+  return _asArray(operators).filter(op => {
     if (operatorType  && !_contains(op.operatorType, operatorType))     return false;
     if (country       && !_contains(op.country,      country))          return false;
     if (role          && !_arrayContains(op.networkRoles, role))        return false;
@@ -1132,34 +1136,42 @@ function _deriveCostIndex(operatorStr) {
  * @returns {RFEvalRecord} Normalized station record ready for RF evaluation.
  */
 export function normalizeForRFEval(stationRecord, { band = 'X' } = {}) {
-  const antennas = Array.isArray(stationRecord.antennas) ? stationRecord.antennas : [];
+  const record = (stationRecord && typeof stationRecord === 'object') ? stationRecord : {};
+  const requestedBand = String(band ?? 'X').trim() || 'X';
+  const supportedBands = _asArray(record.supportedBands);
+  const effectiveBand = requestedBand
+    && (supportedBands.length === 0 || supportedBands.includes(requestedBand))
+    ? requestedBand
+    : (supportedBands[0] ?? 'X');
+  const antennas = _asArray(record.antennas).filter(a => a && typeof a === 'object');
 
   // Select best antenna for the requested band, fall back to highest gain overall.
   let selectedGain = 30; // dBi default
   if (antennas.length > 0) {
-    const bandMatches = antennas.filter(a => Array.isArray(a.bands) && a.bands.includes(band));
+    const bandMatches = antennas.filter(a => Array.isArray(a.bands) && a.bands.includes(effectiveBand));
     const pool = bandMatches.length > 0 ? bandMatches : antennas;
     const gains = pool.map(a => a.gainDb).filter(g => typeof g === 'number' && isFinite(g));
     if (gains.length > 0) selectedGain = Math.max(...gains);
   }
 
-  const capabilities = Array.isArray(stationRecord.capabilities)
-    ? stationRecord.capabilities
-    : (Array.isArray(stationRecord.services) ? stationRecord.services : []);
+  const capabilities = Array.isArray(record.capabilities)
+    ? record.capabilities
+    : (Array.isArray(record.services) ? record.services : []);
+  const confidence = Number(record.confidence);
 
   return {
-    name:            stationRecord.name,
-    lat_deg:         stationRecord.lat_deg,
-    lon_deg:         stationRecord.lon_deg,
-    alt_m:           stationRecord.elevation_m ?? 0,
+    name:            record.name ?? 'Unnamed Station',
+    lat_deg:         Number.isFinite(Number(record.lat_deg)) ? Number(record.lat_deg) : 0,
+    lon_deg:         Number.isFinite(Number(record.lon_deg)) ? Number(record.lon_deg) : 0,
+    alt_m:           Number.isFinite(Number(record.elevation_m)) ? Number(record.elevation_m) : 0,
     antennaGain_dBi: selectedGain,
-    band,
-    costIndex:       _deriveCostIndex(stationRecord.operator ?? ''),
+    band:            effectiveBand,
+    costIndex:       _deriveCostIndex(record.operator ?? ''),
     hasRedundancy:   antennas.length > 1,
     capabilities,
-    confidence:      stationRecord.confidence,
-    sourceRecords:   stationRecord.sourceRecords ?? [],
-    infraId:         stationRecord.id,
+    confidence:      Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
+    sourceRecords:   _asArray(record.sourceRecords),
+    infraId:         record.id ?? '',
   };
 }
 

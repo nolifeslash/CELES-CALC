@@ -21,6 +21,12 @@ import {
   normalizeForRFEval,
   getInfrastructureSummary,
 } from './infrastructure.js';
+import {
+  createEmptyScenario,
+  mergeScenarioUpdates,
+  scenarioToJSON,
+  scenarioFromJSON,
+} from './scenario.js';
 
 // ─── Required field maps ──────────────────────────────────────────────────────
 
@@ -143,22 +149,23 @@ function _checkUniqueIds(records, entityType) {
  */
 function _checkFilterDeterminism() {
   const errors = [];
+  const sameIds = (a, b) => JSON.stringify(a.map(x => x.id)) === JSON.stringify(b.map(x => x.id));
 
   const gs1 = filterGroundStations(GROUND_STATIONS, { status: 'active' });
   const gs2 = filterGroundStations(GROUND_STATIONS, { status: 'active' });
-  if (gs1.length !== gs2.length) {
+  if (!sameIds(gs1, gs2)) {
     errors.push('filterGroundStations is not deterministic');
   }
 
   const ls1 = filterLaunchSites(LAUNCH_SITES, { country: 'US' });
   const ls2 = filterLaunchSites(LAUNCH_SITES, { country: 'US' });
-  if (ls1.length !== ls2.length) {
+  if (!sameIds(ls1, ls2)) {
     errors.push('filterLaunchSites is not deterministic');
   }
 
   const ttc1 = filterTTCStations(TTC_STATIONS, { status: 'active' });
   const ttc2 = filterTTCStations(TTC_STATIONS, { status: 'active' });
-  if (ttc1.length !== ttc2.length) {
+  if (!sameIds(ttc1, ttc2)) {
     errors.push('filterTTCStations is not deterministic');
   }
 
@@ -294,7 +301,7 @@ export function runUiSmokeChecks() {
     'infra-inspector',
     'infra-btn-validate',
   ];
-  const behavioralCheckCount = 5; // launch, ground, TT&C, operator filters + normalization
+  const behavioralCheckCount = 6; // launch, ground, TT&C, operator filters + normalization + selected station record
 
   if (typeof document === 'undefined') {
     errors.push('UI smoke checks require a browser document context');
@@ -331,8 +338,66 @@ export function runUiSmokeChecks() {
   if (!normalized?.name || !normalized?.band) {
     errors.push('normalizeForRFEval failed for infrastructure-selected station');
   }
+  if (!normalized?.infraId) {
+    errors.push('normalizeForRFEval did not preserve infraId for selected-station flow');
+  }
 
   const totalChecks = requiredIds.length + behavioralCheckCount;
+  const failed = errors.length;
+  return {
+    pass: failed === 0,
+    total: totalChecks,
+    passed: totalChecks - failed,
+    failed,
+    errors,
+  };
+}
+
+/**
+ * Scenario import/export round-trip checks for infrastructure/RF/launch branches.
+ *
+ * @returns {ValidationResult}
+ */
+export function runScenarioRoundTripChecks() {
+  const errors = [];
+  const scenario = mergeScenarioUpdates(createEmptyScenario(), {
+    selectedObjects: ['sat-25544'],
+    layers: { infraGroundStations: true, launchSites: false },
+    warnings: ['demo warning'],
+    precisionLabels: { trackedObjects: 'Simplified educational approximation' },
+    infrastructureDataRefs: { selectedStationId: 'GS-GOL', selectedLaunchSiteId: 'LS-CC' },
+    infrastructure: {
+      selectedStation: normalizeForRFEval(GROUND_STATIONS[0], { band: 'X' }),
+      selectedLaunchSite: LAUNCH_SITES[0],
+    },
+    rfScenario: { selectedBand: 'X' },
+    links: [{ label: 'L1', margin_dB: 3.2 }],
+    networkRoutes: [{ name: 'Direct', score: 0.9 }],
+    groundStationRecommendations: [{ id: 'GS-GOL', name: 'Goldstone', lat_deg: 35.4, lon_deg: -116.8, score: 0.9 }],
+    launchScenario: { launchToOrbit: { feasible: true } },
+    launchWindows: [{ rank: 1, epochISO: '2026-01-01T00:00:00Z' }],
+    launchSolutions: [{ site: 'LS-CC', precisionLabel: 'Simplified engineering approximation' }],
+    trackedObjectResults: [{ satNumber: 25544, x_eci: 1, y_eci: 2, z_eci: 3 }],
+  });
+  const roundTrip = scenarioFromJSON(scenarioToJSON(scenario));
+  const checks = [
+    ['selectedObjects', Array.isArray(roundTrip.selectedObjects) && roundTrip.selectedObjects[0] === 'sat-25544'],
+    ['layers', roundTrip.layers?.infraGroundStations === true],
+    ['warnings', Array.isArray(roundTrip.warnings) && roundTrip.warnings.length === 1],
+    ['precisionLabels', roundTrip.precisionLabels?.trackedObjects != null],
+    ['infrastructureDataRefs', roundTrip.infrastructureDataRefs?.selectedStationId === 'GS-GOL'],
+    ['rfScenario', roundTrip.rfScenario?.selectedBand === 'X'],
+    ['links', Array.isArray(roundTrip.links) && roundTrip.links.length === 1],
+    ['networkRoutes', Array.isArray(roundTrip.networkRoutes) && roundTrip.networkRoutes.length === 1],
+    ['groundStationRecommendations', Array.isArray(roundTrip.groundStationRecommendations) && roundTrip.groundStationRecommendations.length === 1],
+    ['launch windows/solutions', Array.isArray(roundTrip.launchWindows) && Array.isArray(roundTrip.launchSolutions)],
+    ['trackedObjectResults', Array.isArray(roundTrip.trackedObjectResults) && roundTrip.trackedObjectResults.length === 1],
+  ];
+  checks.forEach(([label, ok]) => {
+    if (!ok) errors.push(`Scenario round-trip failed branch: ${label}`);
+  });
+
+  const totalChecks = checks.length;
   const failed = errors.length;
   return {
     pass: failed === 0,
@@ -352,12 +417,13 @@ export function runUiSmokeChecks() {
 export function renderValidationResults(container) {
   const infraResult = runInfrastructureSmokeChecks();
   const uiResult = runUiSmokeChecks();
+  const scenarioResult = runScenarioRoundTripChecks();
   const result = {
-    pass: infraResult.pass && uiResult.pass,
-    total: infraResult.total + uiResult.total,
-    passed: infraResult.passed + uiResult.passed,
-    failed: infraResult.failed + uiResult.failed,
-    errors: [...infraResult.errors, ...uiResult.errors],
+    pass: infraResult.pass && uiResult.pass && scenarioResult.pass,
+    total: infraResult.total + uiResult.total + scenarioResult.total,
+    passed: infraResult.passed + uiResult.passed + scenarioResult.passed,
+    failed: infraResult.failed + uiResult.failed + scenarioResult.failed,
+    errors: [...infraResult.errors, ...uiResult.errors, ...scenarioResult.errors],
   };
 
   let html = `<div class="card"><div class="card-title">Infrastructure Validation</div>`;
@@ -378,6 +444,10 @@ export function renderValidationResults(container) {
   html += `<div class="infra-inspector-row">
     <span class="infra-inspector-label">UI Smoke Checks</span>
     <span class="infra-inspector-value">${uiResult.passed}/${uiResult.total}</span>
+  </div>`;
+  html += `<div class="infra-inspector-row">
+    <span class="infra-inspector-label">Scenario Round-Trip Checks</span>
+    <span class="infra-inspector-value">${scenarioResult.passed}/${scenarioResult.total}</span>
   </div>`;
 
   if (result.errors.length > 0) {

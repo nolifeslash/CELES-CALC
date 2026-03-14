@@ -189,15 +189,17 @@ export function render3DView(canvas, scenario, viewState, layerState, interactio
 
   // 9c. Infrastructure overlays (static seed data — perspective projection)
   const earthObj = byId['earth'];
+  const selectedStationId = scenario?.infrastructure?.selectedStation?.infraId ?? null;
+  const selectedLaunchSiteId = scenario?.infrastructure?.selectedLaunchSite?.id ?? null;
   if (earthObj) {
     if (isLayerVisible(layerState, 'infraLaunchSites', PANE_ID)) {
-      _drawInfraMarkers3D(ctx, LAUNCH_SITES, camera, vpSize, '#ff5722', 4, showLabels);
+      _drawInfraMarkers3D(ctx, LAUNCH_SITES, camera, vpSize, '#ff5722', 4, showLabels, selectedLaunchSiteId);
     }
     if (isLayerVisible(layerState, 'infraGroundStations', PANE_ID)) {
-      _drawInfraMarkers3D(ctx, GROUND_STATIONS, camera, vpSize, '#2196f3', 5, showLabels);
+      _drawInfraMarkers3D(ctx, GROUND_STATIONS, camera, vpSize, '#2196f3', 5, showLabels, selectedStationId);
     }
     if (isLayerVisible(layerState, 'infraTTCStations', PANE_ID)) {
-      _drawInfraMarkers3D(ctx, TTC_STATIONS, camera, vpSize, '#9c27b0', 5, showLabels);
+      _drawInfraMarkers3D(ctx, TTC_STATIONS, camera, vpSize, '#9c27b0', 5, showLabels, selectedStationId);
     }
   }
 
@@ -330,14 +332,17 @@ function _drawAxesGizmo(ctx, w, h, p, viewState) {
  * @param {boolean} showLabels  Whether to render name labels.
  * @private
  */
-function _drawInfraMarkers3D(ctx, records, camera, vpSize, color, size, showLabels) {
-  for (const rec of records) {
-    if (rec.lat_deg == null || rec.lon_deg == null) continue;
-    const pos = latLonToWorldKm(rec.lat_deg, rec.lon_deg);
+function _drawInfraMarkers3D(ctx, records, camera, vpSize, color, size, showLabels, selectedId = null) {
+  for (const rec of (Array.isArray(records) ? records : [])) {
+    const lat = Number(rec?.lat_deg);
+    const lon = Number(rec?.lon_deg);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+    const pos = latLonToWorldKm(lat, lon);
     const result = projectPerspective(pos, camera, vpSize);
     if (!result) continue;
-    const label = showLabels ? rec.name : undefined;
-    drawMarkerDot(ctx, result.px, result.py, color, size, label, false, false);
+    const isSelected = selectedId != null && (rec?.id === selectedId || rec?.infraId === selectedId);
+    const label = (showLabels || isSelected) ? rec?.name : undefined;
+    drawMarkerDot(ctx, result.px, result.py, color, size, label, isSelected, false);
   }
 }
 

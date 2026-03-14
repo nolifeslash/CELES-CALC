@@ -34,6 +34,9 @@ export function loadStations(jsonArray) {
     costIndex:      s.costIndex      ?? 1.0,
     hasRedundancy:  s.hasRedundancy  ?? false,
     capabilities:   s.capabilities   ?? [],
+    confidence:     Number.isFinite(Number(s.confidence)) ? Number(s.confidence) : 0,
+    sourceRecords:  Array.isArray(s.sourceRecords) ? s.sourceRecords : [],
+    infraId:        s.infraId ?? null,
   }));
 }
 
