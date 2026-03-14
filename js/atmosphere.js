@@ -98,7 +98,11 @@ export function lowElevationPenalty(el_deg) {
 export function atmosphericLoss(band, weatherPreset, el_deg) {
   const preset = WEATHER_PRESETS[weatherPreset];
   if (!preset) return 0;
-  const zenithAtten = preset.attenuationByBand[band] ?? 0;
+  const zenithAtten = preset.attenuationByBand[band];
+  if (zenithAtten === undefined) {
+    console.warn(`[atmosphere] atmosphericLoss: band "${band}" not in attenuation table; returning 0 dB.`);
+    return 0;
+  }
   return zenithAtten * lowElevationPenalty(el_deg);
 }
 
