@@ -31,6 +31,8 @@ import * as TransferPlanner from './js/transfer-planner.js';
 import * as Phasing         from './js/phasing.js';
 import * as DeltaVBudget    from './js/delta-v-budget.js';
 import * as LunarTransfer   from './js/lunar-transfer.js';
+import * as Infrastructure  from './js/infrastructure.js';
+import { initInfrastructureBrowser } from './js/infrastructure-browser.js';
 
 /* ================================================================
    State
@@ -91,6 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
   ['satcom-sub-bar', 'launch-sub-bar'].forEach(UI.initSubTabs);
   wireSatcomTab();
   wireLaunchTab();
+
+  UI.initSubTabs('infra-sub-bar');
+  wireInfrastructureTab();
 });
 
 /* ================================================================
@@ -971,26 +976,34 @@ function calcStationComparison() {
   const weather = document.getElementById('st-weather').value;
   const optMode = document.getElementById('st-optmode').value;
 
-  const stations = Groundstations.loadStations(LaunchSites.BUILTIN_SITES.map(s => ({
-    name: s.name, lat_deg: s.lat_deg, lon_deg: s.lon_deg, alt_m: 0,
-    antennaGain_dBi: 40, band, costIndex: 1, hasRedundancy: true,
-    capabilities: ['ttc', 'eo'],
-  })));
+  // Build candidate list from infrastructure database (ground + TTC stations)
+  const infraRecords = [
+    ...Infrastructure.GROUND_STATIONS,
+    ...Infrastructure.TTC_STATIONS,
+  ];
+  const normalizedRecords = infraRecords.map(r => Infrastructure.normalizeForRFEval(r, { band }));
+  const stations = Groundstations.loadStations(normalizedRecords);
 
   const ranked = Groundstations.rankStations(stations, {
     orbitAlt_km: alt, inclination_deg: inc, band, weatherPreset: weather, optimizationMode: optMode,
   });
 
-  const headers = ['Rank', 'Station', 'Score', 'Margin (dB)', 'Coverage', 'Availability'];
-  const rows = ranked.map((r, i) => [
-    i + 1,
-    r.station?.name ?? '—',
-    typeof r.score === 'number' ? r.score.toFixed(1) : '—',
-    typeof r.margin === 'number' ? r.margin.toFixed(1) : '—',
-    typeof r.coverage === 'number' ? (r.coverage * 100).toFixed(0) + '%' : '—',
-    typeof r.availability === 'number' ? (r.availability * 100).toFixed(0) + '%' : '—',
-  ]);
-  UI.renderTable('satcom-st-results', headers, rows, 'Ground Station Ranking');
+  const headers = ['Rank', 'Station', 'Score', 'Margin (dB)', 'Coverage', 'Availability', 'Confidence'];
+  const rows = ranked.map((r, i) => {
+    const infraId = r.station?.infraId;
+    const orig = infraRecords.find(s => s.id === infraId);
+    const confLabel = orig ? Infrastructure.confidenceLabel(orig.confidence) : '—';
+    return [
+      i + 1,
+      r.station?.name ?? '—',
+      typeof r.score === 'number' ? r.score.toFixed(1) : '—',
+      typeof r.margin === 'number' ? r.margin.toFixed(1) : '—',
+      typeof r.coverage === 'number' ? (r.coverage * 100).toFixed(0) + '%' : '—',
+      typeof r.availability === 'number' ? (r.availability * 100).toFixed(0) + '%' : '—',
+      confLabel,
+    ];
+  });
+  UI.renderTable('satcom-st-results', headers, rows, 'Ground Station Ranking (Infrastructure DB)');
   _patchScenario({ rfScenario: { stationComparison: ranked } });
 }
 
@@ -1107,6 +1120,50 @@ function wireLaunchTab() {
   document.getElementById('btn-rpo-calc')?.addEventListener('click', calcRPO);
   document.getElementById('btn-lt-calc')?.addEventListener('click', calcLunarTransfer);
   document.getElementById('btn-dv-calc')?.addEventListener('click', calcDeltaVBudget);
+}
+
+/* ================================================================
+   Infrastructure tab
+   ================================================================ */
+function wireInfrastructureTab() {
+  // Show summary count in the header bar
+  const summary = Infrastructure.getInfrastructureSummary();
+  const summaryBar = document.getElementById('infra-summary-bar');
+  if (summaryBar) {
+    summaryBar.textContent =
+      `Seed database: ${summary.launchSites} launch sites · ` +
+      `${summary.groundStations} ground stations · ` +
+      `${summary.ttcStations} TT&C stations · ` +
+      `${summary.operators} operators — ` +
+      `real source-backed records, not global completeness`;
+  }
+
+  // Initialize browser with callback that populates station comparison
+  initInfrastructureBrowser(station => {
+    // Push selected station into station comparison inputs
+    const bandEl = document.getElementById('st-band');
+    if (bandEl && station.band) bandEl.value = station.band;
+    UI.showToast(`Station "${station.name}" queued for RF comparison — switch to RF/SATCOM tab`, 'ok');
+    _patchScenario({ infrastructure: { selectedStation: station } });
+  });
+
+  // Also handle the CustomEvent for use-in-RF
+  document.addEventListener('infra:selectstation', e => {
+    const station = e.detail?.station;
+    if (!station) return;
+    const bandEl = document.getElementById('st-band');
+    if (bandEl && station.band) bandEl.value = station.band;
+    UI.showToast(`Station "${station.name}" queued for RF comparison`, 'ok');
+    _patchScenario({ infrastructure: { selectedStation: station } });
+  });
+
+  // Handle use-in-launch-planner CustomEvent
+  document.addEventListener('infra:selectlaunchsite', e => {
+    const site = e.detail?.site;
+    if (!site) return;
+    UI.showToast(`Launch site "${site.name}" — switch to Launch Planner tab`, 'ok');
+    _patchScenario({ infrastructure: { selectedLaunchSite: site } });
+  });
 }
 
 function calcLaunchToOrbit() {

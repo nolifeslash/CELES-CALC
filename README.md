@@ -30,6 +30,91 @@ CELES-CALC lets you:
 18. **Lunar transfer planning** — TLI/LOI delta-V estimates, transfer duration, mission leg sequencing
 19. **Mission delta-V budgets** — structured budget builder with standard mission presets
 20. **Launch window search** — simplified MVP: coarse scan with inclination feasibility + RAAN proximity scoring, ranked results, per-window accept/reject reasons
+21. **Infrastructure Browser** — browse, filter, and inspect a source-backed seed database of launch sites, ground stations, TT&C stations, and network operators; select records to use in RF or launch analysis
+
+---
+
+## Infrastructure Database
+
+CELES-CALC includes a **source-aware infrastructure planning database** for space operations infrastructure.
+
+### Entity Types
+
+| Entity | Description |
+|---|---|
+| `launch_site` | Orbital launch facilities (location, vehicle classes, azimuth/inclination notes) |
+| `ground_station` | Tracking and data-downlink stations (antennas, bands, capabilities) |
+| `ttc_station` | Telemetry, tracking, and command stations (services, bands, network) |
+| `network_operator` | Operator/network records linking stations to organizations |
+
+### Data Model
+
+Every record includes:
+- **Identity** — `id`, `name`, `aliases`, `operator`, `country`
+- **Location** — `lat_deg`, `lon_deg`, `elevation_m`
+- **Status** — `active` / `historical` / `proposed`
+- **Capability fields** — bands, services, vehicle classes, antennas
+- **Provenance** — `sourceRecords[]` with source title, date, and per-source confidence
+- **Confidence** — overall `confidence` score in [0, 1]; `high` ≥ 0.9, `medium` ≥ 0.7, `low` < 0.7
+- **Tags / notes** — free-text fields for context and caveats
+
+### Seed Data Coverage (MVP)
+
+The current database contains:
+- **5 launch sites**: Cape Canaveral, Baikonur, Guiana Space Centre, Vandenberg, Tanegashima
+- **5 ground stations**: Goldstone, Canberra, Madrid (DSN); Svalbard (KSAT); Hartebeesthoek (SANSA)
+- **3 TT&C stations**: Kiruna (ESTRACK/ESA); White Sands (NASA/TDRS); ISTRAC Bangalore (ISRO)
+- **3 network operators**: NASA DSN, KSAT, ESA ESTRACK
+
+**Important:** This is a **starter seed database**, not global completeness. Coverage will expand in future passes. Treat all records as planning-grade approximations unless the source record explicitly states higher precision.
+
+### Source and Confidence Policy
+
+- Values marked `confidence ≥ 0.9` come from official documentation (DSN Handbook, ESA ESTRACK, operator fact sheets)
+- Values marked `confidence < 0.8` are secondary or aggregated — use with caution
+- If a technical field is not publicly documented, the record omits it or provides a conservative approximation with an explanatory note
+- The database does not claim to represent hidden capabilities, classified systems, or non-public technical parameters
+
+### Infrastructure Browser UI
+
+The **Infrastructure** tab provides:
+- Sub-tab browsing for each entity type
+- Filters by status, country, RF band, operator type, and free-text search
+- Inspector panel showing full record details including source list and confidence
+- **"Use in RF Comparison"** button — pushes a selected ground/TTC station into the RF station comparison
+- **"Use in Launch Planner"** button — loads a launch site into the launch planning workflow
+- Global search across all entity types
+
+### RF Integration
+
+The station comparison tool in the RF/SATCOM tab now uses the infrastructure database:
+- Candidate stations come from `GROUND_STATIONS` + `TTC_STATIONS`
+- `normalizeForRFEval()` converts each record into the format expected by the weighted optimizer
+- Antenna gain is selected for the requested band (highest-gain antenna for that band, fallback to overall best)
+- Cost index is derived from operator type (governmental: 0.8, KSAT commercial: 1.0, other: 1.2)
+- Results table includes a Confidence column
+
+### Visualizer Overlays
+
+The visualizer renders infrastructure markers on the top-view orthographic display:
+- 🔴 **Launch sites** (orange-red, `infraLaunchSites` layer)
+- 🔵 **Ground stations** (blue, `infraGroundStations` layer)
+- 🟣 **TT&C stations** (purple, `infraTTCStations` layer)
+
+Toggle visibility using the layer checkboxes in the visualizer sidebar. Labels show when the Labels layer is active.
+
+### Validation
+
+`js/infra-validate.js` provides `validateInfrastructure()` which checks:
+- Required fields present on all records
+- Coordinate plausibility
+- Confidence values in [0, 1]
+- Source record presence
+- ID uniqueness
+- Filter function determinism
+- RF normalization output completeness
+
+All 23 seed-data checks pass against the current database.
 
 ---
 
@@ -79,7 +164,10 @@ The Calculator is the **authoritative owner** of the scenario. Every calculation
   transferPlans,          // [] transfer plan options
   missionLegs,            // [] mission leg sequence
   deltaVBudget,           // structured delta-V budget
-  infrastructureDataRefs  // references to infrastructure data
+  infrastructure: {       // infrastructure selection state
+    selectedStation,      // normalizeForRFEval() output for selected GS/TTC
+    selectedLaunchSite,   // selected launch site record
+  }
 }
 ```
 
@@ -380,6 +468,9 @@ CELES-CALC/
     ├── delta-v-budget.js # Mission delta-V budget builder
     ├── mission-sequencer.js # Mission leg sequencing
     ├── lunar-transfer.js # Earth-to-Moon transfer MVP
+    ├── infrastructure.js  # Infrastructure seed data + filtering/RF normalization
+    ├── infrastructure-browser.js # Infrastructure browser/filter/inspector UI
+    ├── infra-validate.js  # Lightweight schema & behavioral validation
     ├── lambert.js      # (stub) Lambert orbit solver
     ├── porkchop.js     # (stub) Porkchop plot generator
     └── interplanetary.js # (stub) Interplanetary transfer
@@ -412,6 +503,8 @@ Visualizer (visualizer.html)
 3. **Add real ephemerides**: replace analytic functions in `moon.js`/`earth.js` with ephemeris lookups.
 4. **Add new visualizer layers**: update `layers.js` `DEFAULT_LAYERS`, add rendering in `renderer-core.js` and each view renderer.
 5. **Add per-pane layer overrides**: use `setPaneOverride()` / `clearPaneOverride()` in `layers.js`.
+6. **Extend the infrastructure database**: add records to `js/infrastructure.js` `LAUNCH_SITES`, `GROUND_STATIONS`, `TTC_STATIONS`, or `NETWORK_OPERATORS`. Follow the existing schema; include `sourceRecords` and `confidence` on every new record. Run `validateInfrastructure()` to verify.
+7. **Deepen RF integration**: update `normalizeForRFEval()` in `infrastructure.js` to incorporate additional fields (e.g., automationLevel, redundancyClass) into the optimizer inputs.
 
 ---
 
@@ -425,6 +518,9 @@ Visualizer (visualizer.html)
 - No EOP or light-time correction
 - 3D view uses canvas-based pseudo-perspective (not WebGL)
 - OMM fetching requires network access to CelesTrak (may be blocked by CORS in some environments)
+- Infrastructure database is seed-only (16 records total) — not a global directory
+- Infrastructure visualizer overlays use simplified ECEF positioning (no LMST rotation) — positions are geographic, not sidereal-time-corrected
+- Station comparison scoring is a heuristic model (no measured link budgets)
 
 ---
 

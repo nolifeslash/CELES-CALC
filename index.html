@@ -33,6 +33,7 @@
   <button class="tab-btn" data-tab="distance">         <span class="tab-icon">📏</span> Distance</button>
   <button class="tab-btn" data-tab="satcom">           <span class="tab-icon">📡</span> RF/SATCOM</button>
   <button class="tab-btn" data-tab="launch">           <span class="tab-icon">🚀</span> Launch Planner</button>
+  <button class="tab-btn" data-tab="infrastructure">   <span class="tab-icon">🛰</span> Infrastructure</button>
 </nav>
 
 <!-- ── MAIN ───────────────────────────────────────────────── -->
@@ -1142,6 +1143,188 @@
       <div class="results-area" id="launch-dv-results"></div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       INFRASTRUCTURE TAB
+       ═══════════════════════════════════════════════════════ -->
+  <div id="panel-infrastructure" class="tab-panel">
+
+    <!-- Global search bar -->
+    <div class="card">
+      <div class="card-title">Infrastructure Browser</div>
+      <p class="help-text">Browse, filter, and inspect launch sites, ground stations, TT&amp;C facilities, and network operators. Select a station to use it in RF or launch analysis.</p>
+      <div class="form-row">
+        <input type="text" id="infra-search-global" placeholder="Search all infrastructure…" style="flex:1"/>
+        <button class="btn btn-ghost" id="infra-btn-search-global">Search ▶</button>
+      </div>
+      <div id="infra-summary-bar" style="margin-top:0.5rem;font-size:0.85rem;color:var(--col-muted)"></div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="sub-tab-bar" id="infra-sub-bar">
+      <button class="sub-tab-btn active" data-subtab="infra-launch">🚀 Launch Sites</button>
+      <button class="sub-tab-btn" data-subtab="infra-ground">📡 Ground Stations</button>
+      <button class="sub-tab-btn" data-subtab="infra-ttc">🛰 TT&amp;C Stations</button>
+      <button class="sub-tab-btn" data-subtab="infra-operators">🏢 Operators</button>
+    </div>
+
+    <!-- ── Launch Sites ── -->
+    <div id="infra-launch" class="sub-panel active">
+      <div class="infra-browser-layout">
+        <!-- Filter sidebar -->
+        <div class="infra-filter-panel card">
+          <div class="card-title">Filters</div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="infra-launch-filter-status">
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="historical">Historical</option>
+              <option value="proposed">Proposed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Country Code</label>
+            <input type="text" id="infra-launch-filter-country" placeholder="e.g. US, JP, FR-GF"/>
+          </div>
+          <div class="form-group">
+            <label>Site Type</label>
+            <select id="infra-launch-filter-sitetype">
+              <option value="">Any</option>
+              <option value="coastal">Coastal</option>
+              <option value="inland">Inland</option>
+              <option value="coastal-island">Coastal Island</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Search</label>
+            <input type="text" id="infra-launch-filter-text" placeholder="Name, operator, tag…"/>
+          </div>
+          <button class="btn btn-primary" id="infra-launch-btn-filter">Apply ▶</button>
+        </div>
+        <!-- Results list -->
+        <div class="infra-list-panel">
+          <div id="infra-launch-list" class="infra-item-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ground Stations ── -->
+    <div id="infra-ground" class="sub-panel">
+      <div class="infra-browser-layout">
+        <div class="infra-filter-panel card">
+          <div class="card-title">Filters</div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="infra-ground-filter-status">
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="historical">Historical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Country Code</label>
+            <input type="text" id="infra-ground-filter-country" placeholder="e.g. US, AU, NO"/>
+          </div>
+          <div class="form-group">
+            <label>RF Band</label>
+            <select id="infra-ground-filter-band">
+              <option value="">Any</option>
+              <option value="S">S</option>
+              <option value="X">X</option>
+              <option value="Ka">Ka</option>
+              <option value="Ku">Ku</option>
+              <option value="L">L</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Search</label>
+            <input type="text" id="infra-ground-filter-text" placeholder="Name, operator, tag…"/>
+          </div>
+          <button class="btn btn-primary" id="infra-ground-btn-filter">Apply ▶</button>
+        </div>
+        <div class="infra-list-panel">
+          <div id="infra-ground-list" class="infra-item-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TT&C Stations ── -->
+    <div id="infra-ttc" class="sub-panel">
+      <div class="infra-browser-layout">
+        <div class="infra-filter-panel card">
+          <div class="card-title">Filters</div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="infra-ttc-filter-status">
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="historical">Historical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Country Code</label>
+            <input type="text" id="infra-ttc-filter-country" placeholder="e.g. US, SE, IN"/>
+          </div>
+          <div class="form-group">
+            <label>RF Band</label>
+            <select id="infra-ttc-filter-band">
+              <option value="">Any</option>
+              <option value="S">S</option>
+              <option value="X">X</option>
+              <option value="Ka">Ka</option>
+              <option value="Ku">Ku</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Search</label>
+            <input type="text" id="infra-ttc-filter-text" placeholder="Name, network, tag…"/>
+          </div>
+          <button class="btn btn-primary" id="infra-ttc-btn-filter">Apply ▶</button>
+        </div>
+        <div class="infra-list-panel">
+          <div id="infra-ttc-list" class="infra-item-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Operators ── -->
+    <div id="infra-operators" class="sub-panel">
+      <div class="infra-browser-layout">
+        <div class="infra-filter-panel card">
+          <div class="card-title">Filters</div>
+          <div class="form-group">
+            <label>Operator Type</label>
+            <select id="infra-ops-filter-type">
+              <option value="">All</option>
+              <option value="governmental">Governmental</option>
+              <option value="commercial">Commercial</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Search</label>
+            <input type="text" id="infra-ops-filter-text" placeholder="Name, country, role…"/>
+          </div>
+          <button class="btn btn-primary" id="infra-ops-btn-filter">Apply ▶</button>
+        </div>
+        <div class="infra-list-panel">
+          <div id="infra-ops-list" class="infra-item-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inspector panel (shared, shown below lists) -->
+    <div id="infra-inspector" class="card infra-inspector--hidden">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+        <span class="card-title" style="margin:0">Inspector</span>
+        <button class="btn btn-ghost btn-sm" id="infra-clear-inspector">✕ Close</button>
+      </div>
+      <div id="infra-inspector-body"></div>
+    </div>
+
+  </div>
+  <!-- end panel-infrastructure -->
 
 </main>
 

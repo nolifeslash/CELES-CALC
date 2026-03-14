@@ -547,3 +547,120 @@ select { cursor: pointer; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--col-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--col-text3); }
+
+/* ================================================================
+   Infrastructure Browser
+   ================================================================ */
+.infra-browser-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+.infra-filter-panel {
+  flex: 0 0 200px;
+  min-width: 160px;
+}
+.infra-list-panel {
+  flex: 1;
+  min-width: 0;
+}
+.infra-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.infra-item {
+  padding: 8px 10px;
+  border: 1px solid var(--col-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--col-surface);
+  transition: background .15s, border-color .15s;
+}
+.infra-item:hover { background: var(--col-accent-bg); border-color: var(--col-accent); }
+.infra-item.infra-item--active { background: var(--col-accent-bg); border-color: var(--col-accent); }
+.infra-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.infra-item-name { font-weight: 600; font-size: var(--fs-sm); flex: 1; min-width: 0; }
+.infra-item-meta { font-size: var(--fs-xs); color: var(--col-text2); margin-top: 3px; }
+.infra-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--col-text3);
+  font-size: var(--fs-sm);
+  border: 1px dashed var(--col-border);
+  border-radius: var(--radius-sm);
+}
+/* Confidence badges */
+.conf-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.conf-high   { background: #d1fae5; color: #065f46; }
+.conf-medium { background: #fef3c7; color: #92400e; }
+.conf-low    { background: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .conf-high   { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .conf-medium { background: #451a03; color: #fbbf24; }
+[data-theme="dark"] .conf-low    { background: #450a0a; color: #fca5a5; }
+/* Status badges */
+.infra-item-status {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+.status-active   { background: #d1fae5; color: #065f46; }
+.status-historical { background: #e5e7eb; color: #374151; }
+.status-proposed { background: #dbeafe; color: #1e40af; }
+.status-limited  { background: #fef3c7; color: #92400e; }
+[data-theme="dark"] .status-active   { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .status-historical { background: #374151; color: #d1d5db; }
+[data-theme="dark"] .status-proposed { background: #1e3a8a; color: #93c5fd; }
+[data-theme="dark"] .status-limited  { background: #451a03; color: #fbbf24; }
+/* Inspector */
+#infra-inspector { margin-top: 14px; }
+.infra-inspector--hidden { display: none; }
+.infra-inspector-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--col-border);
+  font-size: var(--fs-sm);
+}
+.infra-inspector-row:last-child { border-bottom: none; }
+.infra-inspector-label {
+  flex: 0 0 130px;
+  color: var(--col-text2);
+  font-weight: 500;
+}
+.infra-inspector-value { flex: 1; }
+.infra-source-list { list-style: none; padding: 0; margin: 0; }
+.infra-source-item { font-size: var(--fs-xs); color: var(--col-text2); padding: 2px 0; }
+.infra-antenna-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.infra-antenna-tag {
+  font-size: var(--fs-xs);
+  padding: 1px 6px;
+  border: 1px solid var(--col-border);
+  border-radius: 4px;
+  background: var(--col-surface2);
+}
+.infra-tag { font-size: var(--fs-xs); padding: 1px 6px; border-radius: 8px; background: var(--col-surface2); border: 1px solid var(--col-border); margin: 1px; }
+.help-text { color: var(--col-text2); font-size: var(--fs-sm); margin-bottom: 0.75rem; }
+.form-row { display: flex; gap: 8px; align-items: center; }
+
+@media (max-width: 640px) {
+  .infra-browser-layout { flex-direction: column; }
+  .infra-filter-panel { flex: unset; width: 100%; }
+}
