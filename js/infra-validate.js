@@ -294,6 +294,7 @@ export function runUiSmokeChecks() {
     'infra-inspector',
     'infra-btn-validate',
   ];
+  const behavioralCheckCount = 5; // launch, ground, TT&C, operator filters + normalization
 
   if (typeof document === 'undefined') {
     errors.push('UI smoke checks require a browser document context');
@@ -331,7 +332,7 @@ export function runUiSmokeChecks() {
     errors.push('normalizeForRFEval failed for infrastructure-selected station');
   }
 
-  const totalChecks = requiredIds.length + 5;
+  const totalChecks = requiredIds.length + behavioralCheckCount;
   const failed = errors.length;
   return {
     pass: failed === 0,
