@@ -11,14 +11,11 @@ import {
   palette, prepareCanvas, dims,
   drawCircle, drawMarkerDot, drawOrbitEllipse, drawLine,
   drawLabel, drawGrid, drawScaleBar, drawAxisLabel, drawViewLabel,
-  extractSceneObjects,
+  extractSceneObjects, latLonToWorldKm,
 } from './renderer-core.js';
 import { getViewport } from './camera.js';
 import { isLayerVisible } from './layers.js';
 import { LAUNCH_SITES, GROUND_STATIONS, TTC_STATIONS } from './infrastructure.js';
-
-/** Earth mean radius in km (matching renderer-core convention). */
-const R_EARTH_KM = 6371;
 
 /** @type {'top'} */
 const AXIS = 'top';
@@ -188,13 +185,7 @@ export function renderTopView(canvas, scenario, viewState, layerState, interacti
 function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis) {
   for (const rec of records) {
     if (rec.lat_deg == null || rec.lon_deg == null) continue;
-    const lat = rec.lat_deg * Math.PI / 180;
-    const lon = rec.lon_deg * Math.PI / 180;
-    const pos = {
-      x: R_EARTH_KM * Math.cos(lat) * Math.cos(lon),
-      y: R_EARTH_KM * Math.cos(lat) * Math.sin(lon),
-      z: R_EARTH_KM * Math.sin(lat),
-    };
+    const pos = latLonToWorldKm(rec.lat_deg, rec.lon_deg);
     const { px, py } = projectOrthographic(pos, axis, viewport);
     const label = showLabels ? rec.name : undefined;
     drawMarkerDot(ctx, px, py, color, size, label, false, false);

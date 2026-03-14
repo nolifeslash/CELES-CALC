@@ -791,7 +791,7 @@ export const NETWORK_OPERATORS = [
       { source: 'ESA Ground Facilities brochure', date: '2023-06-01', confidence: 0.88 },
     ],
     confidence: 0.9,
-    notes: 'Core stations at Kiruna, Kourou, Cebreros, New Norcia, and Malargüe',
+    notes: 'Seeded stations: Kiruna, Cebreros (TT&C + GS), New Norcia. Full network also includes Kourou, Malargüe, Perth, and others not yet in this seed database.',
     stationIds: ['TTC-ESA-KIR', 'TTC-ESA-CEB', 'GS-NNO', 'GS-CEB'],
   },
   {

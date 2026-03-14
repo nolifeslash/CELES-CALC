@@ -820,3 +820,29 @@ function _axisLetters(axis) {
     default:      return { h: 'X', v: 'Y' };
   }
 }
+
+// ─── Shared infrastructure helpers ───────────────────────────────────────────
+
+/** Earth radius used for placing infrastructure markers on Earth's surface [km]. */
+const _R_INFRA_KM = 6371;
+
+/**
+ * Convert a geodetic latitude/longitude to an ECEF world-space point in km,
+ * assuming a spherical Earth with radius {@link _R_INFRA_KM}.
+ *
+ * Used by all four renderers to place infrastructure seed-data markers on the
+ * Earth surface without duplicating the conversion formula.
+ *
+ * @param {number} lat_deg - Geodetic latitude in degrees (−90 to 90).
+ * @param {number} lon_deg - Longitude in degrees (−180 to 180).
+ * @returns {{x:number, y:number, z:number}} ECEF position in km.
+ */
+export function latLonToWorldKm(lat_deg, lon_deg) {
+  const lat = lat_deg * (Math.PI / 180);
+  const lon = lon_deg * (Math.PI / 180);
+  return {
+    x: _R_INFRA_KM * Math.cos(lat) * Math.cos(lon),
+    y: _R_INFRA_KM * Math.cos(lat) * Math.sin(lon),
+    z: _R_INFRA_KM * Math.sin(lat),
+  };
+}
