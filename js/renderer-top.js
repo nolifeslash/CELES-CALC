@@ -191,7 +191,7 @@ function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
     const pos = latLonToWorldKm(lat, lon);
     const { px, py } = projectOrthographic(pos, axis, viewport);
-    const isSelected = selectedId != null && rec?.id === selectedId;
+    const isSelected = selectedId != null && (rec?.id === selectedId || rec?.infraId === selectedId);
     const label = (showLabels || isSelected) ? rec?.name : undefined;
     drawMarkerDot(ctx, px, py, color, size, label, isSelected, false);
   }

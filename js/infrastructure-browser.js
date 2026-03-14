@@ -281,7 +281,7 @@ function _showInspector(record, type) {
       antennas.map(a => `<li>${_esc(a.id)} — ${_esc(a.diameter_m ?? '—')} m — ${_esc(_safeArray(a.bands).join(', '))} — ${_esc(a.gainDb ?? '—')} dBi</li>`).join('')
     }</ul></div>`;
 
-  html += row('Confidence', `${confidenceBadge(confidence)} (${confidenceLabel(confidence)})`);
+  html += row('Confidence', `${confidenceBadge(confidence)} (${confidence.toFixed(2)})`);
 
   if (_safeArray(rec.sourceRecords).length)
     html += `<div class="infra-detail-section"><strong>Sources</strong><ul class="infra-source-list">${

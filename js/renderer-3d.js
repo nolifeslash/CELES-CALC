@@ -340,7 +340,7 @@ function _drawInfraMarkers3D(ctx, records, camera, vpSize, color, size, showLabe
     const pos = latLonToWorldKm(lat, lon);
     const result = projectPerspective(pos, camera, vpSize);
     if (!result) continue;
-    const isSelected = selectedId != null && rec?.id === selectedId;
+    const isSelected = selectedId != null && (rec?.id === selectedId || rec?.infraId === selectedId);
     const label = (showLabels || isSelected) ? rec?.name : undefined;
     drawMarkerDot(ctx, result.px, result.py, color, size, label, isSelected, false);
   }
