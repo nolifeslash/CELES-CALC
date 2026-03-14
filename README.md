@@ -29,7 +29,7 @@ CELES-CALC lets you:
 17. **Phasing & RPO planning** — phasing orbit calculation, rendezvous opportunity, servicing mission planning
 18. **Lunar transfer planning** — TLI/LOI delta-V estimates, transfer duration, mission leg sequencing
 19. **Mission delta-V budgets** — structured budget builder with standard mission presets
-20. **Launch window search** — generic window search engine for launch, phasing, and transfer opportunities
+20. **Launch window search** — simplified MVP: coarse scan with inclination feasibility + RAAN proximity scoring, ranked results, per-window accept/reject reasons
 
 ---
 
@@ -180,8 +180,8 @@ The launch expansion adds mission access planning, orbit transfer calculations, 
 |---------|--------|-----------|
 | Launch site access | `js/launch-sites.js` | Standard engineering approximation |
 | Vehicle suitability | `js/launch-vehicles.js` | Simplified classification |
-| Launch-to-orbit | `js/launch-planner.js` | Simplified educational approximation |
-| Window search | `js/window-search.js` | Standard engineering approximation |
+| Launch-to-orbit | `js/launch-planner.js` | Simplified engineering approximation |
+| Window search | `js/window-search.js` | Simplified MVP — inclination + RAAN proximity scoring |
 | Orbit transfer | `js/transfer-planner.js` | Two-body (Keplerian) |
 | Phasing / RPO | `js/phasing.js` | Simplified educational approximation |
 | Delta-V budget | `js/delta-v-budget.js` | Standard engineering approximation |
@@ -190,7 +190,7 @@ The launch expansion adds mission access planning, orbit transfer calculations, 
 
 Stub architecture for future expansion: `js/lambert.js`, `js/porkchop.js`, `js/interplanetary.js`.
 
-> **Accuracy note:** Launch calculations are mission-planning access tools, NOT full dynamics solvers. Lunar transfer uses simplified patched-two-body, not full cislunar optimization.
+> **Accuracy note:** Launch calculations are mission-planning access tools, NOT full dynamics solvers. Window search uses a simplified coarse scan with inclination feasibility and RAAN proximity scoring (RAAN ≈ GMST + site longitude — zeroth-order approximation). Lunar transfer uses simplified patched-two-body, not full cislunar optimization.
 
 ---
 

@@ -1022,6 +1022,7 @@
             </div>
             <div class="form-group"><label>Target Alt (km)</label><input type="number" id="lto-alt" placeholder="400" step="any"/></div>
             <div class="form-group"><label>Target Inclination (°)</label><input type="number" id="lto-inc" placeholder="51.6" step="any"/></div>
+            <div class="form-group"><label>Target RAAN (°) <em style="font-weight:normal;font-size:0.85em">(optional)</em></label><input type="number" id="lto-raan" placeholder="optional" step="any"/></div>
           </div>
           <div>
             <div class="form-group"><label>Payload (kg)</label><input type="number" id="lto-payload" placeholder="5000" step="any"/></div>
@@ -1034,6 +1035,7 @@
                 <option value="super_heavy">Super Heavy</option>
               </select>
             </div>
+            <div class="form-group"><label>Window Horizon (days)</label><input type="number" id="lto-horizon" value="7" min="1" max="30" step="1"/></div>
           </div>
         </div>
         <div class="btn-row">
@@ -1042,6 +1044,7 @@
         </div>
       </div>
       <div class="results-area" id="launch-lto-results"></div>
+      <div class="results-area" id="launch-lto-windows"></div>
     </div>
 
     <!-- Orbit Transfer -->

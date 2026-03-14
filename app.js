@@ -1093,6 +1093,10 @@ function wireLaunchTab() {
     document.getElementById('lto-inc').value     = '51.6';
     document.getElementById('lto-payload').value = '5000';
     document.getElementById('lto-vehicle').value = 'medium';
+    const raanEl = document.getElementById('lto-raan');
+    if (raanEl) raanEl.value = '';
+    const horizonEl = document.getElementById('lto-horizon');
+    if (horizonEl) horizonEl.value = '7';
   });
   document.getElementById('btn-tr-calc')?.addEventListener('click', calcOrbitTransfer);
   document.getElementById('btn-tr-demo')?.addEventListener('click', () => {
@@ -1112,14 +1116,26 @@ function calcLaunchToOrbit() {
   const payload = UI.validateNumber('lto-payload'); if (payload === null) return;
   const vehicle = document.getElementById('lto-vehicle').value;
 
+  // Optional RAAN target — keep as undefined if field is blank or non-numeric
+  const raanRaw    = document.getElementById('lto-raan')?.value?.trim();
+  const raanParsed = (raanRaw !== '' && raanRaw != null) ? parseFloat(raanRaw) : NaN;
+  const targetRaan = !isNaN(raanParsed) ? raanParsed : undefined;
+
+  // Window horizon (days, default 7)
+  const horizonRaw = document.getElementById('lto-horizon')?.value;
+  const horizon    = horizonRaw ? Math.max(1, Math.min(30, parseFloat(horizonRaw) || 7)) : 7;
+
   const site = LaunchSites.BUILTIN_SITES.find(s => s.id === siteId) || LaunchSites.BUILTIN_SITES[0];
 
   const result = LaunchPlanner.planLaunch({
     site,
-    targetAlt_km:   alt,
-    targetInc_deg:  inc,
-    payloadMass_kg: payload,
-    vehicleClass:   vehicle,
+    targetAlt_km:        alt,
+    targetInc_deg:       inc,
+    targetRaan_deg:      targetRaan,
+    payloadMass_kg:      payload,
+    vehicleClass:        vehicle,
+    searchHorizon_days:  horizon,
+    maxWindows:          5,
   });
 
   UI.renderResultCards('launch-lto-results', [
@@ -1130,7 +1146,56 @@ function calcLaunchToOrbit() {
     { label: 'Vehicle Suitability',    value: result.vehicleSuitability?.rating ?? '—' },
     { label: 'Warnings',              value: (result.warnings || []).join('; ') || 'None' },
   ], 'Launch Plan');
-  _patchScenario({ launchScenario: { launchToOrbit: result } });
+
+  // Render window table
+  if (result.nextWindows && result.nextWindows.length > 0) {
+    const headers = ['#', 'UTC', 'Score', 'RAAN Achieved', 'RAAN Δ', 'Reason'];
+    const rows = result.nextWindows.map(w => [
+      w.rank,
+      w.epochISO ? w.epochISO.replace('T', ' ').replace('.000Z', ' Z') : '—',
+      w.score != null ? w.score.toFixed(3) : '—',
+      w.raanAchieved_deg != null ? `${w.raanAchieved_deg}°` : '—',
+      w.raanError_deg   != null ? `${w.raanError_deg}°`    : '—',
+      w.reason || '—',
+    ]);
+    const stats = result.windowSearchStats;
+    const statsNote = stats
+      ? `(scanned ${stats.evaluated} slots — ${stats.feasible} feasible, ${stats.rejected} rejected)`
+      : '';
+    UI.renderTable('launch-lto-windows', headers, rows,
+      `Top Launch Windows — next ${horizon} days ${statsNote}`);
+  } else {
+    UI.renderAlert('launch-lto-windows',
+      result.nextWindows?.length === 0
+        ? 'No feasible launch windows found in the search horizon.'
+        : 'Window search not run.', 'warn');
+  }
+
+  // Update scenario
+  const launchWindows = (result.nextWindows || []).map(w => ({
+    ...w,
+    site:           site.id,
+    targetAlt_km:   alt,
+    targetInc_deg:  inc,
+    targetRaan_deg: targetRaan,
+  }));
+  const launchSolutions = result.feasible ? [{
+    site:                site.id,
+    targetAlt_km:        alt,
+    targetInc_deg:       inc,
+    targetRaan_deg:      targetRaan,
+    azimuth_deg:         result.azimuth_deg,
+    insertionDeltaV_m_s: result.insertionDeltaV_m_s,
+    vehicleClass:        vehicle,
+    vehicleSuitability:  result.vehicleSuitability,
+    precisionLabel:      result.precisionLabel,
+  }] : [];
+
+  _patchScenario({
+    launchScenario:  { launchToOrbit: result },
+    launchWindows,
+    launchSolutions,
+  });
 }
 
 function calcOrbitTransfer() {
