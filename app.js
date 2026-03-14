@@ -33,7 +33,7 @@ import * as DeltaVBudget    from './js/delta-v-budget.js';
 import * as LunarTransfer   from './js/lunar-transfer.js';
 import * as Infrastructure  from './js/infrastructure.js';
 import { initInfrastructureBrowser } from './js/infrastructure-browser.js';
-import { renderValidationResults, runInfrastructureSmokeChecks, runUiSmokeChecks, runScenarioRoundTripChecks } from './js/infra-validate.js';
+import { renderValidationResults, runInfrastructureSmokeChecks, runUiSmokeChecks, runRfIntegrationSmokeChecks, runLaunchPlannerSmokeChecks, runScenarioRoundTripChecks } from './js/infra-validate.js';
 
 /* ================================================================
    State
@@ -1266,6 +1266,11 @@ function wireInfrastructureTab() {
   document.addEventListener('infra:selectlaunchsite', e => {
     const site = e.detail?.site;
     if (!site) return;
+    const siteEl = document.getElementById('lto-site');
+    const builtinMatch = _findBuiltinLaunchSiteMatch(site);
+    if (siteEl && builtinMatch?.id) {
+      siteEl.value = builtinMatch.id;
+    }
     UI.showToast(`Launch site "${site.name}" — switch to Launch Planner tab`, 'ok');
     _patchScenario({
       infrastructure: { selectedLaunchSite: site },
@@ -1303,7 +1308,20 @@ function calcLaunchToOrbit() {
   const horizonRaw = document.getElementById('lto-horizon')?.value;
   const horizon    = horizonRaw ? Math.max(1, Math.min(30, parseFloat(horizonRaw) || 7)) : 7;
 
-  const site = LaunchSites.BUILTIN_SITES.find(s => s.id === siteId) || LaunchSites.BUILTIN_SITES[0];
+  const selectedInfraSite = _currentScenario?.infrastructure?.selectedLaunchSite;
+  const selectedSiteIdRef = _currentScenario?.infrastructureDataRefs?.selectedLaunchSiteId;
+  const builtinSite = LaunchSites.BUILTIN_SITES.find(s => s.id === siteId) || LaunchSites.BUILTIN_SITES[0];
+  const useSelectedInfraSite = _isValidInfrastructureLaunchSite(selectedInfraSite)
+    && selectedInfraSite.id === selectedSiteIdRef
+    && (siteId === 'cape_canaveral' || !_findBuiltinLaunchSiteMatch(selectedInfraSite));
+  const site = useSelectedInfraSite
+    ? {
+      id: selectedInfraSite.id || 'infra-selected-site',
+      name: selectedInfraSite.name || 'Selected infrastructure launch site',
+      lat_deg: Number(selectedInfraSite.lat_deg),
+      lon_deg: Number(selectedInfraSite.lon_deg),
+    }
+    : builtinSite;
 
   const result = LaunchPlanner.planLaunch({
     site,
@@ -1315,6 +1333,9 @@ function calcLaunchToOrbit() {
     searchHorizon_days:  horizon,
     maxWindows:          5,
   });
+  if (useSelectedInfraSite) {
+    result.warnings = [...(result.warnings || []), 'Using launch site selected in Infrastructure browser'];
+  }
 
   UI.renderResultCards('launch-lto-results', [
     { label: 'Feasible',               value: result.feasible ? 'YES' : 'NO', variant: result.feasible ? 'ok' : 'warn' },
@@ -1348,7 +1369,6 @@ function calcLaunchToOrbit() {
         ? 'No feasible launch windows found in the search horizon.'
         : 'Window search not run.', 'warn');
   }
-
   // Update scenario
   const launchWindows = (result.nextWindows || []).map(w => ({
     ...w,
@@ -1370,7 +1390,7 @@ function calcLaunchToOrbit() {
   }] : [];
 
   _patchScenario({
-    launchScenario:  { launchToOrbit: result },
+    launchScenario:  { launchToOrbit: result, site },
     launchWindows,
     launchSolutions,
   });
@@ -1507,6 +1527,24 @@ function _isValidInfrastructureStation(station) {
     && station.name.trim() !== '';
 }
 
+function _isValidInfrastructureLaunchSite(site) {
+  return !!site
+    && Number.isFinite(Number(site.lat_deg))
+    && Number.isFinite(Number(site.lon_deg))
+    && typeof site.name === 'string'
+    && site.name.trim() !== '';
+}
+
+function _findBuiltinLaunchSiteMatch(site) {
+  if (!_isValidInfrastructureLaunchSite(site)) return null;
+  return LaunchSites.BUILTIN_SITES.find(b =>
+    Math.abs(Number(site.lat_deg) - Number(b.lat_deg)) < 0.8
+    && Math.abs(Number(site.lon_deg) - Number(b.lon_deg)) < 0.8
+  ) || LaunchSites.BUILTIN_SITES.find(b =>
+    normName.includes((b.name || '').toLowerCase().split(' ')[0])
+  ) || null;
+}
+
 /* ================================================================
    ── ACCEPTANCE TESTS ─────────────────────────────────────────
    ================================================================ */
@@ -1586,6 +1624,8 @@ export function runAcceptanceTests() {
     }},
     { name: 'Infrastructure: smoke checks pass', fn: () => runInfrastructureSmokeChecks().pass },
     { name: 'Infrastructure UI: smoke checks pass', fn: () => runUiSmokeChecks().pass },
+    { name: 'RF integration: smoke checks pass', fn: () => runRfIntegrationSmokeChecks().pass },
+    { name: 'Launch planner: smoke checks pass', fn: () => runLaunchPlannerSmokeChecks().pass },
     { name: 'Scenario: round-trip checks pass', fn: () => runScenarioRoundTripChecks().pass },
   ];
 

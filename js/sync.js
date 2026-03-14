@@ -109,9 +109,22 @@ export function publishScenarioState(scenario) {
  */
 export function subscribeScenarioState(callback) {
   const ch = _getChannel();
+  let lastPayload = null;
+  let lastReceivedAt = 0;
+
+  function shouldDropDuplicate(payload) {
+    if (typeof payload !== 'string' || payload.length === 0) return false;
+    const now = Date.now();
+    const isDuplicate = payload === lastPayload && (now - lastReceivedAt) < 1500;
+    lastPayload = payload;
+    lastReceivedAt = now;
+    return isDuplicate;
+  }
 
   function onMessage(event) {
+    if (_status === 'paused') return;
     if (event.data?.type === 'scenario_update') {
+      if (shouldDropDuplicate(event.data.payload)) return;
       _setStatus('connected');
       try {
         const s = scenarioFromJSON(event.data.payload);
@@ -123,7 +136,9 @@ export function subscribeScenarioState(callback) {
   }
 
   function onStorage(event) {
+    if (_status === 'paused') return;
     if (event.key === STORAGE_KEY && event.newValue) {
+      if (shouldDropDuplicate(event.newValue)) return;
       try {
         const s = scenarioFromJSON(event.newValue);
         callback(s, 'storage');

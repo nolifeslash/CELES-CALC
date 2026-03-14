@@ -109,6 +109,8 @@ Toggle visibility using the layer checkboxes in the visualizer sidebar. Labels s
 `js/infra-validate.js` provides:
 - `validateInfrastructure()` / `runInfrastructureSmokeChecks()` for data/schema integrity checks
 - `runUiSmokeChecks()` for lightweight Infrastructure-tab UI wiring checks
+- `runRfIntegrationSmokeChecks()` for selected-station → RF ranking integration checks
+- `runLaunchPlannerSmokeChecks()` for feasible/infeasible launch-window sanity checks
 - `runScenarioRoundTripChecks()` for scenario import/export branch-preservation checks
 
 Infrastructure checks cover:
