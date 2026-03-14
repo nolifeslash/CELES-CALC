@@ -15,6 +15,10 @@ import {
 } from './renderer-core.js';
 import { getViewport } from './camera.js';
 import { isLayerVisible } from './layers.js';
+import { LAUNCH_SITES, GROUND_STATIONS, TTC_STATIONS } from './infrastructure.js';
+
+/** Earth mean radius in km (matching renderer-core convention). */
+const R_EARTH_KM = 6371;
 
 /** @type {'top'} */
 const AXIS = 'top';
@@ -138,6 +142,20 @@ export function renderTopView(canvas, scenario, viewState, layerState, interacti
       showLabels ? obj.label : undefined, isSel, isHov);
   }
 
+  // 10c. Infrastructure overlays (static seed data — rendered when Earth is visible)
+  const earthObj = byId['earth'];
+  if (earthObj) {
+    if (isLayerVisible(layerState, 'infraLaunchSites', AXIS)) {
+      _drawInfraMarkers(ctx, LAUNCH_SITES, viewport, '#ff5722', 4, showLabels, AXIS);
+    }
+    if (isLayerVisible(layerState, 'infraGroundStations', AXIS)) {
+      _drawInfraMarkers(ctx, GROUND_STATIONS, viewport, '#2196f3', 5, showLabels, AXIS);
+    }
+    if (isLayerVisible(layerState, 'infraTTCStations', AXIS)) {
+      _drawInfraMarkers(ctx, TTC_STATIONS, viewport, '#9c27b0', 5, showLabels, AXIS);
+    }
+  }
+
   // 11. Chrome: axis labels, view label, scale bar
   drawAxisLabel(ctx, w, h, AXIS);
   drawViewLabel(ctx, VIEW_LABEL, w, h);
@@ -150,6 +168,38 @@ export function renderTopView(canvas, scenario, viewState, layerState, interacti
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Draw infrastructure site markers (launch sites / ground / TTC stations)
+ * from a static array of infrastructure records.
+ *
+ * Records must include `lat_deg` and `lon_deg` (and optionally `name`).
+ * Positions are placed on the Earth surface using a simple spherical model.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{lat_deg:number,lon_deg:number,name?:string,status?:string}>} records
+ * @param {{cx:number,cy:number,scale:number}} viewport
+ * @param {string} color  Fill color.
+ * @param {number} size   Dot radius in pixels.
+ * @param {boolean} showLabels  Whether to render name labels.
+ * @param {string} axis   Projection axis ('top').
+ * @private
+ */
+function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis) {
+  for (const rec of records) {
+    if (rec.lat_deg == null || rec.lon_deg == null) continue;
+    const lat = rec.lat_deg * Math.PI / 180;
+    const lon = rec.lon_deg * Math.PI / 180;
+    const pos = {
+      x: R_EARTH_KM * Math.cos(lat) * Math.cos(lon),
+      y: R_EARTH_KM * Math.cos(lat) * Math.sin(lon),
+      z: R_EARTH_KM * Math.sin(lat),
+    };
+    const { px, py } = projectOrthographic(pos, axis, viewport);
+    const label = showLabels ? rec.name : undefined;
+    drawMarkerDot(ctx, px, py, color, size, label, false, false);
+  }
+}
 
 /**
  * Draw connected line segments for an orbit path projected onto this axis.

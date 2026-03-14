@@ -30,7 +30,10 @@ export const DEFAULT_LAYERS = Object.freeze({
   vectorArrows: true,
   terminatorLine: true,
   horizonBoundary: true,
-  annotations: true
+  annotations: true,
+  infraLaunchSites: true,
+  infraGroundStations: true,
+  infraTTCStations: true,
 });
 
 /** @typedef {'top'|'sideA'|'sideB'|'3d'} PaneId */
