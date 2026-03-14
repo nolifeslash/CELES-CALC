@@ -33,6 +33,7 @@ import * as DeltaVBudget    from './js/delta-v-budget.js';
 import * as LunarTransfer   from './js/lunar-transfer.js';
 import * as Infrastructure  from './js/infrastructure.js';
 import { initInfrastructureBrowser } from './js/infrastructure-browser.js';
+import { renderValidationResults } from './js/infra-validate.js';
 
 /* ================================================================
    State
@@ -1163,6 +1164,19 @@ function wireInfrastructureTab() {
     if (!site) return;
     UI.showToast(`Launch site "${site.name}" — switch to Launch Planner tab`, 'ok');
     _patchScenario({ infrastructure: { selectedLaunchSite: site } });
+  });
+
+  // Wire the validation sub-tab button
+  document.getElementById('infra-btn-validate')?.addEventListener('click', () => {
+    const container = document.getElementById('infra-validate-results');
+    if (!container) return;
+    const result = renderValidationResults(container);
+    UI.showToast(
+      result.pass
+        ? `Validation passed: ${result.passed}/${result.total} checks`
+        : `Validation: ${result.failed} issue${result.failed !== 1 ? 's' : ''} found`,
+      result.pass ? 'ok' : 'warn',
+    );
   });
 }
 

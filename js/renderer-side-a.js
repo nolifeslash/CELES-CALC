@@ -11,10 +11,11 @@ import {
   palette, prepareCanvas, dims,
   drawCircle, drawMarkerDot, drawLine,
   drawLabel, drawGrid, drawScaleBar, drawAxisLabel, drawViewLabel,
-  extractSceneObjects,
+  extractSceneObjects, latLonToWorldKm,
 } from './renderer-core.js';
 import { getViewport } from './camera.js';
 import { isLayerVisible } from './layers.js';
+import { LAUNCH_SITES, GROUND_STATIONS, TTC_STATIONS } from './infrastructure.js';
 
 /** @type {'sideA'} */
 const AXIS = 'sideA';
@@ -137,6 +138,20 @@ export function renderSideAView(canvas, scenario, viewState, layerState, interac
       showLabels ? obj.label : undefined, isSel, isHov);
   }
 
+  // 10c. Infrastructure overlays (static seed data)
+  const earthObj = byId['earth'];
+  if (earthObj) {
+    if (isLayerVisible(layerState, 'infraLaunchSites', AXIS)) {
+      _drawInfraMarkers(ctx, LAUNCH_SITES, viewport, '#ff5722', 4, showLabels, AXIS);
+    }
+    if (isLayerVisible(layerState, 'infraGroundStations', AXIS)) {
+      _drawInfraMarkers(ctx, GROUND_STATIONS, viewport, '#2196f3', 5, showLabels, AXIS);
+    }
+    if (isLayerVisible(layerState, 'infraTTCStations', AXIS)) {
+      _drawInfraMarkers(ctx, TTC_STATIONS, viewport, '#9c27b0', 5, showLabels, AXIS);
+    }
+  }
+
   // 11. Chrome
   drawAxisLabel(ctx, w, h, AXIS);
   drawViewLabel(ctx, VIEW_LABEL, w, h);
@@ -179,6 +194,28 @@ function _drawOrbitPath(ctx, orbitPoints, viewport, color) {
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+/**
+ * Draw infrastructure site markers from a static array of infrastructure records.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{lat_deg:number,lon_deg:number,name?:string,status?:string}>} records
+ * @param {{cx:number,cy:number,scale:number}} viewport
+ * @param {string} color  Fill color.
+ * @param {number} size   Dot radius in pixels.
+ * @param {boolean} showLabels  Whether to render name labels.
+ * @param {string} axis   Projection axis.
+ * @private
+ */
+function _drawInfraMarkers(ctx, records, viewport, color, size, showLabels, axis) {
+  for (const rec of records) {
+    if (rec.lat_deg == null || rec.lon_deg == null) continue;
+    const pos = latLonToWorldKm(rec.lat_deg, rec.lon_deg);
+    const { px, py } = projectOrthographic(pos, axis, viewport);
+    const label = showLabels ? rec.name : undefined;
+    drawMarkerDot(ctx, px, py, color, size, label, false, false);
+  }
 }
 
 /**

@@ -14,10 +14,11 @@ import {
   palette, prepareCanvas, dims,
   drawCircle, drawMarkerDot, drawLine, drawArrowHead,
   drawLabel, drawViewLabel,
-  extractSceneObjects,
+  extractSceneObjects, latLonToWorldKm,
 } from './renderer-core.js';
 import { getViewport } from './camera.js';
 import { isLayerVisible } from './layers.js';
+import { LAUNCH_SITES, GROUND_STATIONS, TTC_STATIONS } from './infrastructure.js';
 
 /** View name shown in the pane chrome. */
 const VIEW_LABEL = '3D View';
@@ -186,6 +187,20 @@ export function render3DView(canvas, scenario, viewState, layerState, interactio
       showLabels ? obj.label : undefined, isSel, isHov);
   }
 
+  // 9c. Infrastructure overlays (static seed data — perspective projection)
+  const earthObj = byId['earth'];
+  if (earthObj) {
+    if (isLayerVisible(layerState, 'infraLaunchSites', PANE_ID)) {
+      _drawInfraMarkers3D(ctx, LAUNCH_SITES, camera, vpSize, '#ff5722', 4, showLabels);
+    }
+    if (isLayerVisible(layerState, 'infraGroundStations', PANE_ID)) {
+      _drawInfraMarkers3D(ctx, GROUND_STATIONS, camera, vpSize, '#2196f3', 5, showLabels);
+    }
+    if (isLayerVisible(layerState, 'infraTTCStations', PANE_ID)) {
+      _drawInfraMarkers3D(ctx, TTC_STATIONS, camera, vpSize, '#9c27b0', 5, showLabels);
+    }
+  }
+
   // 10. Chrome: axes gizmo + view label
   _drawAxesGizmo(ctx, w, h, p, viewState);
   drawViewLabel(ctx, VIEW_LABEL, w, h);
@@ -301,6 +316,29 @@ function _drawAxesGizmo(ctx, w, h, p, viewState) {
       ax.color, 'center', 10);
   }
   ctx.restore();
+}
+
+/**
+ * Draw infrastructure site markers using perspective projection.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{lat_deg:number,lon_deg:number,name?:string}>} records
+ * @param {object} camera  Perspective camera object.
+ * @param {{width:number,height:number}} vpSize
+ * @param {string} color  Fill color.
+ * @param {number} size   Dot radius in pixels.
+ * @param {boolean} showLabels  Whether to render name labels.
+ * @private
+ */
+function _drawInfraMarkers3D(ctx, records, camera, vpSize, color, size, showLabels) {
+  for (const rec of records) {
+    if (rec.lat_deg == null || rec.lon_deg == null) continue;
+    const pos = latLonToWorldKm(rec.lat_deg, rec.lon_deg);
+    const result = projectPerspective(pos, camera, vpSize);
+    if (!result) continue;
+    const label = showLabels ? rec.name : undefined;
+    drawMarkerDot(ctx, result.px, result.py, color, size, label, false, false);
+  }
 }
 
 /**

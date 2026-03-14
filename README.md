@@ -61,10 +61,10 @@ Every record includes:
 ### Seed Data Coverage (MVP)
 
 The current database contains:
-- **5 launch sites**: Cape Canaveral, Baikonur, Guiana Space Centre, Vandenberg, Tanegashima
-- **5 ground stations**: Goldstone, Canberra, Madrid (DSN); Svalbard (KSAT); Hartebeesthoek (SANSA)
-- **3 TT&C stations**: Kiruna (ESTRACK/ESA); White Sands (NASA/TDRS); ISTRAC Bangalore (ISRO)
-- **3 network operators**: NASA DSN, KSAT, ESA ESTRACK
+- **10 launch sites**: Cape Canaveral, Baikonur, Guiana Space Centre, Vandenberg, Tanegashima, Plesetsk, Satish Dhawan (Sriharikota), Jiuquan, Wenchang, SpaceX Starbase
+- **9 ground stations**: Goldstone, Canberra, Madrid (DSN); Svalbard (KSAT); Hartebeesthoek (SANSA); New Norcia, Cebreros (ESA/ESTRACK); Uchinoura (JAXA); Perth (NASA/CSIRO)
+- **6 TT&C stations**: Kiruna (ESTRACK/ESA); White Sands (NASA/TDRS); ISTRAC Bangalore (ISRO); Cebreros TT&C (ESA); Aussaguel (CNES); Uchinoura (JAXA)
+- **6 network operators**: NASA DSN, KSAT, ESA ESTRACK, CNES, JAXA, NASA Space Network (TDRS)
 
 **Important:** This is a **starter seed database**, not global completeness. Coverage will expand in future passes. Treat all records as planning-grade approximations unless the source record explicitly states higher precision.
 
@@ -78,12 +78,13 @@ The current database contains:
 ### Infrastructure Browser UI
 
 The **Infrastructure** tab provides:
-- Sub-tab browsing for each entity type
+- Sub-tab browsing for each entity type (Launch Sites, Ground Stations, TT&C Stations, Operators)
 - Filters by status, country, RF band, operator type, and free-text search
 - Inspector panel showing full record details including source list and confidence
 - **"Use in RF Comparison"** button — pushes a selected ground/TTC station into the RF station comparison
 - **"Use in Launch Planner"** button — loads a launch site into the launch planning workflow
 - Global search across all entity types
+- **Validate tab** — runs `validateInfrastructure()` in-browser to check schema and behavioral integrity
 
 ### RF Integration
 
@@ -96,7 +97,7 @@ The station comparison tool in the RF/SATCOM tab now uses the infrastructure dat
 
 ### Visualizer Overlays
 
-The visualizer renders infrastructure markers on the top-view orthographic display:
+The visualizer renders infrastructure markers on **all four engineering views** (Top, Side A, Side B, 3D):
 - 🔴 **Launch sites** (orange-red, `infraLaunchSites` layer)
 - 🔵 **Ground stations** (blue, `infraGroundStations` layer)
 - 🟣 **TT&C stations** (purple, `infraTTCStations` layer)
@@ -114,7 +115,7 @@ Toggle visibility using the layer checkboxes in the visualizer sidebar. Labels s
 - Filter function determinism
 - RF normalization output completeness
 
-All 23 seed-data checks pass against the current database.
+Run the checks at any time from the **Infrastructure → Validate** sub-tab in the Calculator.
 
 ---
 
@@ -288,16 +289,16 @@ Sample infrastructure data files are in the `data/` directory:
 
 | File | Contents |
 |------|----------|
-| `data/launch-sites.sample.json` | 5 launch sites with coordinates, capabilities |
-| `data/ground-stations.sample.json` | 5 ground stations with antenna specs |
-| `data/ttc-stations.sample.json` | 3 TT&C stations |
-| `data/network-operators.sample.json` | 3 network operators |
+| `data/launch-sites.sample.json` | 5 launch sites with coordinates, capabilities (schema reference) |
+| `data/ground-stations.sample.json` | 5 ground stations with antenna specs (schema reference) |
+| `data/ttc-stations.sample.json` | 3 TT&C stations (schema reference) |
+| `data/network-operators.sample.json` | 3 network operators (schema reference) |
 | `data/launch-vehicles.sample.json` | 5 vehicle profiles (small → tug) |
 | `data/bands.sample.json` | 7 RF band definitions |
 | `data/service-profiles.sample.json` | 7 service profiles |
 | `data/weather-profiles.sample.json` | 7 weather presets |
 
-Every record supports `sourceRecords[]` (provenance), `confidence` (0–1), `notes`, and `tags[]`.
+> **Note:** The active seed data is embedded directly in `js/infrastructure.js` (10 launch sites, 9 ground stations, 6 TT&C stations, 6 operators). The `data/*.sample.json` files are schema-reference snapshots of the original MVP records.
 
 ### Pipeline 1 — Generic Orbit Math (Space/Orbital tab)
 - COE ↔ Cartesian state vectors
@@ -338,12 +339,21 @@ xdg-open index.html    # Linux
 start index.html       # Windows
 ```
 
-> **Note:** Some browsers block ES module imports from `file://` URLs. If you see module errors, use Option 2.
+> **Note:** Some browsers block ES module imports from `file://` URLs. If you see module errors, use Option 2 or 3.
 
-### Option 2 — Tiny local server (recommended)
+### Option 2 — serve.py (recommended — zero dependencies)
 
 ```bash
-# Python 3
+python3 serve.py            # http://localhost:8080  (auto-opens browser)
+python3 serve.py 9000       # use a custom port
+```
+
+`serve.py` is included in the repository root. It uses only the Python 3 standard library — no `pip install` required. It automatically opens the Calculator in your default browser.
+
+### Option 3 — Other local servers
+
+```bash
+# Python 3 built-in
 python3 -m http.server 8080
 # then open http://localhost:8080
 
@@ -421,6 +431,7 @@ CELES-CALC/
 ├── visualizer.css      # Visualizer-specific styles
 ├── app.js              # Calculator entry point
 ├── visualizer.js       # Visualizer entry point
+├── serve.py            # Zero-dependency local dev server (Python 3)
 ├── README.md
 ├── formulas.md         # Formula reference
 └── js/

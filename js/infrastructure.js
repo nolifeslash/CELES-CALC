@@ -18,7 +18,10 @@
  * All data is embedded inline; no fetch, no dynamic imports, no bundler.
  */
 
-// ─── Seed data: Launch Sites ──────────────────────────────────────────────────
+/** Schema version for the infrastructure data model. @type {string} */
+export const INFRASTRUCTURE_SCHEMA_VERSION = '1.1';
+
+// ─── Schema typedefs ──────────────────────────────────────────────────────────
 
 /**
  * @typedef {Object} SourceRecord
@@ -26,6 +29,38 @@
  * @property {string} date       - ISO-8601 date string of the source record.
  * @property {number} confidence - Source confidence score in [0, 1].
  */
+
+/**
+ * @typedef {Object} InfrastructureGroup
+ * @description Network membership / grouping record linking stations to a named
+ *   operational group or constellation.
+ * @property {string}   id          - Unique group identifier.
+ * @property {string}   name        - Group / network name.
+ * @property {string}   type        - 'network' | 'constellation' | 'alliance'.
+ * @property {string[]} memberIds   - IDs of member station records.
+ * @property {string}   [notes]     - Free-text notes.
+ */
+
+/**
+ * @typedef {Object} RegulatoryReference
+ * @description Placeholder for regulatory / spectrum coordination references.
+ *   Not implemented in this database version; reserved for future expansion.
+ * @property {string} status       - Always 'placeholder'.
+ * @property {boolean} implemented - Always false.
+ * @property {string} reason       - Explanation of why this is a placeholder.
+ * @property {string} nextPlannedPhase - Phase when this will be populated.
+ */
+
+/**
+ * A structured placeholder returned for regulatory reference lookups.
+ * @type {RegulatoryReference}
+ */
+export const REGULATORY_REFERENCE_PLACEHOLDER = Object.freeze({
+  status: 'placeholder',
+  implemented: false,
+  reason: 'Spectrum coordination and regulatory filing data not yet in scope',
+  nextPlannedPhase: 'Regulatory / Licensing Track',
+});
 
 /**
  * @typedef {Object} LaunchSite
@@ -159,6 +194,116 @@ export const LAUNCH_SITES = [
     confidence: 0.85,
     notes: 'Supports H3 and Epsilon S; seasonal launch windows',
     tags: ['Japan', 'island', 'seasonal-constraints'],
+  },
+  {
+    id: 'LS-PLEA',
+    name: 'Plesetsk Cosmodrome',
+    aliases: ['Plesetsk', 'NIIP-53', 'State Test Cosmodrome'],
+    operator: 'Russian Aerospace Forces',
+    country: 'RU',
+    lat_deg: 62.9272,
+    lon_deg: 40.5780,
+    elevation_m: 140,
+    siteType: 'inland',
+    status: 'active',
+    supportedVehicleClasses: ['small', 'medium', 'heavy'],
+    nominalAzimuthNotes: 'Northward and eastward launches; primarily polar and high-inclination',
+    typicalInclinationNotes: '62.8° minimum direct insertion; primary site for Russian polar/military launches',
+    sourceRecords: [
+      { source: 'Roscosmos public records',     date: '2024-02-10', confidence: 0.82 },
+      { source: "Gunter's Space Page Plesetsk", date: '2024-01-20', confidence: 0.78 },
+    ],
+    confidence: 0.80,
+    notes: 'World\'s busiest launch site historically; primary for Russian military and Soyuz/Rockot missions',
+    tags: ['Russia', 'polar', 'military', 'historical'],
+  },
+  {
+    id: 'LS-SDSC',
+    name: 'Satish Dhawan Space Centre',
+    aliases: ['Sriharikota', 'SDSC-SHAR', 'SHAR'],
+    operator: 'ISRO',
+    country: 'IN',
+    lat_deg: 13.7199,
+    lon_deg: 80.2304,
+    elevation_m: 30,
+    siteType: 'coastal-island',
+    status: 'active',
+    supportedVehicleClasses: ['small', 'medium', 'heavy'],
+    nominalAzimuthNotes: 'Eastward over Bay of Bengal; limited polar access requires dog-leg',
+    typicalInclinationNotes: '~13.7° minimum; SSO via dog-leg; GTO routinely used for GSAT series',
+    sourceRecords: [
+      { source: 'ISRO SHAR overview',      date: '2024-01-15', confidence: 0.87 },
+      { source: 'ISRO annual report 2023', date: '2024-04-01', confidence: 0.82 },
+    ],
+    confidence: 0.85,
+    notes: 'Primary ISRO launch complex; two launch pads (FLP and SLP); barrier island site',
+    tags: ['India', 'ISRO', 'island', 'GTO'],
+  },
+  {
+    id: 'LS-JIU',
+    name: 'Jiuquan Satellite Launch Center',
+    aliases: ['Jiuquan', 'JSLC', 'Shuang Cheng Tze'],
+    operator: 'CNSA / PLA Strategic Support Force',
+    country: 'CN',
+    lat_deg: 40.9583,
+    lon_deg: 100.2917,
+    elevation_m: 1000,
+    siteType: 'desert',
+    status: 'active',
+    supportedVehicleClasses: ['small', 'medium', 'heavy'],
+    nominalAzimuthNotes: 'Eastward over Gobi; constrained by falldown zones in populated regions',
+    typicalInclinationNotes: '42°–70° typical; primary crewed Chinese site for Shenzhou',
+    sourceRecords: [
+      { source: 'CNSA public announcements', date: '2024-03-01', confidence: 0.75 },
+      { source: "Gunter's Space Page",       date: '2024-01-10', confidence: 0.78 },
+    ],
+    confidence: 0.75,
+    notes: 'Oldest Chinese launch site; primary crewed mission site (Shenzhou); desert location',
+    tags: ['China', 'crewed-capable', 'desert', 'CNSA'],
+  },
+  {
+    id: 'LS-WEN',
+    name: 'Wenchang Space Launch Site',
+    aliases: ['Wenchang', 'WSLC'],
+    operator: 'CNSA',
+    country: 'CN',
+    lat_deg: 19.6147,
+    lon_deg: 110.9511,
+    elevation_m: 10,
+    siteType: 'coastal',
+    status: 'active',
+    supportedVehicleClasses: ['heavy', 'super-heavy'],
+    nominalAzimuthNotes: 'Southeastward over South China Sea; near-equatorial latitude advantage',
+    typicalInclinationNotes: '~19.6° minimum; excellent GTO performance; supports polar via dog-leg',
+    sourceRecords: [
+      { source: 'CNSA public announcements',    date: '2024-03-01', confidence: 0.8  },
+      { source: "Gunter's Space Page Wenchang", date: '2024-02-01', confidence: 0.78 },
+    ],
+    confidence: 0.79,
+    notes: 'Newest major Chinese launch site; coastal; latitude advantage for GTO; Long March 5/7',
+    tags: ['China', 'coastal', 'GTO-optimized', 'CNSA'],
+  },
+  {
+    id: 'LS-BOC',
+    name: 'SpaceX Starbase (Boca Chica)',
+    aliases: ['Boca Chica', 'Starbase', 'SpaceX South Texas'],
+    operator: 'SpaceX',
+    country: 'US',
+    lat_deg: 25.9969,
+    lon_deg: -97.1566,
+    elevation_m: 5,
+    siteType: 'coastal',
+    status: 'active',
+    supportedVehicleClasses: ['super-heavy'],
+    nominalAzimuthNotes: 'Eastward/southeastward over Gulf of Mexico; FAA-licensed trajectory corridor',
+    typicalInclinationNotes: 'Low inclination (26°–90°+) achievable; designed for Starship super-heavy lift',
+    sourceRecords: [
+      { source: 'SpaceX Starbase public site',  date: '2024-05-01', confidence: 0.85 },
+      { source: 'FAA Starship EIS documents',   date: '2024-03-15', confidence: 0.82 },
+    ],
+    confidence: 0.83,
+    notes: 'Dedicated Starship / Super Heavy launch complex; commercial; growing ops tempo',
+    tags: ['US', 'SpaceX', 'Starship', 'super-heavy', 'commercial'],
   },
 ];
 
@@ -308,6 +453,95 @@ export const GROUND_STATIONS = [
     notes: 'Key Southern-hemisphere tracking and VLBI site',
     tags: ['SANSA', 'LEO', 'Southern-hemisphere', 'VLBI'],
   },
+  {
+    id: 'GS-NNO',
+    name: 'New Norcia Ground Station',
+    operator: 'ESA',
+    country: 'AU',
+    lat_deg: -31.0483,
+    lon_deg: 116.1917,
+    elevation_m: 252,
+    antennas: [
+      { id: 'NNO-35', diameter_m: 35, bands: ['S', 'X', 'Ka'], gainDb: 70.0 },
+    ],
+    supportedBands: ['S', 'X', 'Ka'],
+    capabilities: ['deep-space-tracking', 'telemetry', 'telecommand', 'ranging', 'LEOP-support'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'ESA ESTRACK station overview', date: '2024-01-20', confidence: 0.9  },
+      { source: 'ESA New Norcia factsheet',      date: '2023-08-01', confidence: 0.88 },
+    ],
+    confidence: 0.89,
+    notes: 'ESA deep-space station in Western Australia; 35 m dish; key for lunar and interplanetary missions',
+    tags: ['ESTRACK', 'ESA', 'deep-space', 'Southern-hemisphere', 'Australia'],
+  },
+  {
+    id: 'GS-CEB',
+    name: 'Cebreros Ground Station',
+    operator: 'ESA',
+    country: 'ES',
+    lat_deg: 40.4527,
+    lon_deg: -4.3675,
+    elevation_m: 790,
+    antennas: [
+      { id: 'CEB-35', diameter_m: 35, bands: ['X', 'Ka'], gainDb: 70.2 },
+    ],
+    supportedBands: ['X', 'Ka'],
+    capabilities: ['deep-space-tracking', 'telemetry', 'telecommand', 'ranging', 'LEOP-support'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'ESA ESTRACK station overview', date: '2024-01-20', confidence: 0.9  },
+      { source: 'ESA Cebreros factsheet',        date: '2023-09-01', confidence: 0.87 },
+    ],
+    confidence: 0.89,
+    notes: 'ESA deep-space station near Ávila, Spain; 35 m dish; primary European deep-space node',
+    tags: ['ESTRACK', 'ESA', 'deep-space', 'Europe'],
+  },
+  {
+    id: 'GS-UCH',
+    name: 'Uchinoura Space Center Ground Station',
+    operator: 'JAXA',
+    country: 'JP',
+    lat_deg: 31.2511,
+    lon_deg: 131.0792,
+    elevation_m: 193,
+    antennas: [
+      { id: 'UCH-20', diameter_m: 20, bands: ['S', 'X'],      gainDb: 57.5 },
+      { id: 'UCH-10', diameter_m: 10, bands: ['S'],            gainDb: 48.0 },
+    ],
+    supportedBands: ['S', 'X'],
+    capabilities: ['deep-space-tracking', 'telemetry', 'telecommand', 'VLBI', 'scientific'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'JAXA USC overview',    date: '2024-02-10', confidence: 0.85 },
+      { source: 'JAXA annual report',   date: '2024-01-20', confidence: 0.82 },
+    ],
+    confidence: 0.83,
+    notes: 'JAXA deep-space and scientific mission support; supported Hayabusa and Akatsuki',
+    tags: ['JAXA', 'deep-space', 'Japan', 'scientific'],
+  },
+  {
+    id: 'GS-PFS',
+    name: 'Perth Ground Station',
+    operator: 'NASA / CSIRO',
+    country: 'AU',
+    lat_deg: -31.8012,
+    lon_deg: 115.8853,
+    elevation_m: 75,
+    antennas: [
+      { id: 'HGA-26', diameter_m: 26, bands: ['S', 'X'], gainDb: 58.0 },
+    ],
+    supportedBands: ['S', 'X'],
+    capabilities: ['LEO-tracking', 'telemetry', 'data-downlink', 'Southern-hemisphere-coverage'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'NASA GSFC ground network',  date: '2023-12-01', confidence: 0.80 },
+      { source: 'CSIRO Astronomy overview',  date: '2024-01-15', confidence: 0.78 },
+    ],
+    confidence: 0.79,
+    notes: 'Southern-hemisphere LEO contact support; part of NASA Near Space Network',
+    tags: ['NASA', 'LEO', 'Southern-hemisphere', 'Australia'],
+  },
 ];
 
 // ─── Seed data: TT&C Stations ─────────────────────────────────────────────────
@@ -406,6 +640,77 @@ export const TTC_STATIONS = [
     notes: 'Primary hub of ISRO TT&C network; supports IRS and GSAT series',
     tags: ['ISRO', 'ISTRAC', 'TT&C', 'India'],
   },
+  {
+    id: 'TTC-ESA-CEB',
+    name: 'Cebreros TT&C Station',
+    network: 'ESTRACK',
+    operator: 'ESA',
+    country: 'ES',
+    lat_deg: 40.4527,
+    lon_deg: -4.3675,
+    elevation_m: 790,
+    supportedBands: ['X', 'Ka'],
+    antennas: [
+      { id: 'CEB-35', diameter_m: 35, bands: ['X', 'Ka'], gainDb: 70.2 },
+    ],
+    services: ['telemetry', 'telecommand', 'ranging', 'deep-space-tracking', 'LEOP-support'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'ESA ESTRACK station overview', date: '2024-01-20', confidence: 0.9  },
+      { source: 'ESA Cebreros factsheet',        date: '2023-09-01', confidence: 0.87 },
+    ],
+    confidence: 0.89,
+    notes: 'ESA primary European deep-space TT&C node; 35 m antenna; supports BepiColombo, JUICE',
+    tags: ['ESTRACK', 'ESA', 'deep-space', 'Europe', 'Spain'],
+  },
+  {
+    id: 'TTC-CNES-AUS',
+    name: 'Aussaguel TT&C Station',
+    network: 'CNES Ground Network',
+    operator: 'CNES',
+    country: 'FR',
+    lat_deg: 43.4258,
+    lon_deg: 1.4867,
+    elevation_m: 240,
+    supportedBands: ['S', 'X', 'Ku'],
+    antennas: [
+      { id: 'AUS-11', diameter_m: 11, bands: ['S', 'X'],     gainDb: 47.0 },
+      { id: 'AUS-3',  diameter_m: 3.8, bands: ['S', 'Ku'],   gainDb: 38.0 },
+    ],
+    services: ['telemetry', 'telecommand', 'ranging', 'orbit-determination', 'GEO-support'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'CNES SINTRA ground segment overview', date: '2024-01-10', confidence: 0.82 },
+      { source: 'CNES annual report 2023',              date: '2024-03-15', confidence: 0.78 },
+    ],
+    confidence: 0.80,
+    notes: 'CNES TT&C hub near Toulouse; supports Spot, Pleiades, and CNES scientific missions',
+    tags: ['CNES', 'France', 'TT&C', 'GEO-support', 'Europe'],
+  },
+  {
+    id: 'TTC-JAXA-UCH',
+    name: 'Uchinoura TT&C Station',
+    network: 'JAXA SDS',
+    operator: 'JAXA',
+    country: 'JP',
+    lat_deg: 31.2511,
+    lon_deg: 131.0792,
+    elevation_m: 193,
+    supportedBands: ['S', 'X'],
+    antennas: [
+      { id: 'UCH-20', diameter_m: 20, bands: ['S', 'X'], gainDb: 57.5 },
+      { id: 'UCH-10', diameter_m: 10, bands: ['S'],       gainDb: 48.0 },
+    ],
+    services: ['telemetry', 'telecommand', 'ranging', 'scientific-support', 'orbit-determination'],
+    status: 'active',
+    sourceRecords: [
+      { source: 'JAXA USC overview',  date: '2024-02-10', confidence: 0.85 },
+      { source: 'JAXA annual report', date: '2024-01-20', confidence: 0.82 },
+    ],
+    confidence: 0.83,
+    notes: 'JAXA TT&C for scientific and deep-space missions; Hayabusa primary contact site',
+    tags: ['JAXA', 'Japan', 'TT&C', 'deep-space', 'scientific'],
+  },
 ];
 
 // ─── Seed data: Network Operators ─────────────────────────────────────────────
@@ -486,7 +791,68 @@ export const NETWORK_OPERATORS = [
       { source: 'ESA Ground Facilities brochure', date: '2023-06-01', confidence: 0.88 },
     ],
     confidence: 0.9,
-    notes: 'Core stations at Kiruna, Kourou, Cebreros, New Norcia, and Malargüe',
+    notes: 'Seeded stations: Kiruna, Cebreros (TT&C + GS), New Norcia. Full network also includes Kourou, Malargüe, Perth, and others not yet in this seed database.',
+    stationIds: ['TTC-ESA-KIR', 'TTC-ESA-CEB', 'GS-NNO', 'GS-CEB'],
+  },
+  {
+    id: 'NO-CNES',
+    name: 'CNES Ground Network (SINTRA)',
+    operatorType: 'governmental',
+    country: 'FR',
+    stationCount: 6,
+    coverageDescription:
+      'French national ground network supporting CNES scientific, Earth-observation, and GEO missions from European and overseas stations',
+    networkRoles: [
+      'telemetry', 'telecommand', 'ranging', 'orbit-determination', 'LEO-support', 'GEO-support',
+    ],
+    website: 'https://www.cnes.fr',
+    stationIds: ['TTC-CNES-AUS'],
+    sourceRecords: [
+      { source: 'CNES SINTRA overview',    date: '2024-01-10', confidence: 0.82 },
+      { source: 'CNES annual report 2023', date: '2024-03-15', confidence: 0.79 },
+    ],
+    confidence: 0.80,
+    notes: 'Operates Aussaguel, Kourou, and overseas stations; supports Spot/Pleiades/Jason series',
+  },
+  {
+    id: 'NO-JAXA',
+    name: 'JAXA Space Tracking and Data Acquisition Network (STANC)',
+    operatorType: 'governmental',
+    country: 'JP',
+    stationCount: 5,
+    coverageDescription:
+      'Japanese national network for scientific, deep-space, and Earth-observation mission TT&C; includes Sagamihara, Uchinoura, and overseas cooperating sites',
+    networkRoles: [
+      'telemetry', 'telecommand', 'ranging', 'deep-space-tracking', 'orbit-determination', 'scientific',
+    ],
+    website: 'https://www.jaxa.jp',
+    stationIds: ['TTC-JAXA-UCH', 'GS-UCH'],
+    sourceRecords: [
+      { source: 'JAXA STANC overview',    date: '2024-02-10', confidence: 0.83 },
+      { source: 'JAXA annual report 2023', date: '2024-01-20', confidence: 0.80 },
+    ],
+    confidence: 0.81,
+    notes: 'Supports H-II missions, Hayabusa, Akatsuki, and international cooperative missions',
+  },
+  {
+    id: 'NO-NASA-SN',
+    name: 'NASA Space Network (TDRS)',
+    operatorType: 'governmental',
+    country: 'US',
+    stationCount: 2,
+    coverageDescription:
+      'NASA relay network using TDRS geosynchronous relay satellites; White Sands ground terminals provide near-continuous LEO and select MEO coverage',
+    networkRoles: [
+      'data-relay', 'TDRS-relay', 'telemetry', 'telecommand', 'S-band-return', 'LEO-support',
+    ],
+    website: 'https://www.nasa.gov/directorates/heo/scan/services/networks/txt_sn.html',
+    stationIds: ['TTC-NASA-WGS'],
+    sourceRecords: [
+      { source: 'NASA SN Users Guide (453-SNUG)', date: '2023-08-01', confidence: 0.93 },
+      { source: 'NASA GSFC SN overview',          date: '2024-01-15', confidence: 0.90 },
+    ],
+    confidence: 0.91,
+    notes: 'TDRS constellation provides ~85–100% LEO contact coverage; supplement to DSN for near-Earth',
   },
 ];
 

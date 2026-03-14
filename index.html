@@ -1166,6 +1166,7 @@
       <button class="sub-tab-btn" data-subtab="infra-ground">📡 Ground Stations</button>
       <button class="sub-tab-btn" data-subtab="infra-ttc">🛰 TT&amp;C Stations</button>
       <button class="sub-tab-btn" data-subtab="infra-operators">🏢 Operators</button>
+      <button class="sub-tab-btn" data-subtab="infra-validate">✅ Validate</button>
     </div>
 
     <!-- ── Launch Sites ── -->
@@ -1312,6 +1313,18 @@
           <div id="infra-ops-list" class="infra-item-list"></div>
         </div>
       </div>
+    </div>
+
+    <!-- ── Validate ── -->
+    <div id="infra-validate" class="sub-panel">
+      <div class="card">
+        <div class="card-title">Infrastructure Self-Check</div>
+        <p class="help-text">Runs schema and behavioral checks against all seed records. Verifies required fields, coordinate plausibility, confidence ranges, source record presence, ID uniqueness, filter determinism, and RF normalization output.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="infra-btn-validate">Run Validation ▶</button>
+        </div>
+      </div>
+      <div id="infra-validate-results"></div>
     </div>
 
     <!-- Inspector panel (shared, shown below lists) -->
