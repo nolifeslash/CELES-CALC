@@ -10,6 +10,9 @@
  * All epoch values are Julian Dates (JD) unless otherwise noted.
  */
 
+import { gmstFromJD } from './time.js';
+import { launchAzimuthForInclination } from './launch-sites.js';
+
 // ─── Coarse search ──────────────────────────────────────────────────────────
 
 /**
@@ -30,6 +33,7 @@ export function coarseSearch(startEpoch, endEpoch, step_s, evaluator) {
     const result = evaluator(jd);
     results.push({
       epoch:    jd,
+      ...result,
       score:    result.score    ?? 0,
       feasible: result.feasible ?? false,
       reason:   result.reason   ?? '',
@@ -139,5 +143,114 @@ export function searchWindows(params) {
       rejected:  raw.length - feasibleCount,
     },
     precisionLabel: 'Generic window search — precision depends on evaluator',
+  };
+}
+
+// ─── Launch window evaluator ─────────────────────────────────────────────────
+
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
+/**
+ * Build a launch-window scoring function for use with `searchWindows`.
+ *
+ * The evaluator scores each candidate epoch by:
+ *   1. Inclination feasibility — whether the site latitude can reach `targetInc_deg`
+ *      without a dog-leg maneuver.
+ *   2. RAAN proximity (if `targetRaan_deg` is supplied) — how closely the achieved
+ *      RAAN matches the target using a coarse Earth-rotation model:
+ *        RAAN_achieved ≈ GMST + site.lon_deg  (simplified spherical-Earth)
+ *   3. Earth-rotation benefit — a small latitude-based bonus favouring equatorial sites.
+ *
+ * @accuracy SIMPLIFIED — engineering approximation.
+ *   - RAAN model uses GMST + site longitude (zeroth-order; ignores orbit-plane geometry).
+ *   - Does not model ascent trajectory, atmospheric drag, or staging.
+ *   - Intended for planning-level window selection, not precision targeting.
+ *
+ * @param {Object}         params
+ * @param {{lat_deg: number, lon_deg: number, name?: string}} params.site
+ * @param {number}         params.targetInc_deg   - Target orbit inclination [°].
+ * @param {number}        [params.targetRaan_deg]  - Target RAAN [°] (optional).
+ * @param {number}        [params.targetAlt_km]   - Target orbit altitude [km] (for feasibility).
+ * @returns {function(epoch_jd: number): {score: number, feasible: boolean, reason: string,
+ *            raanAchieved_deg: number, raanError_deg: number|null}}
+ */
+export function makeLaunchWindowEvaluator(params) {
+  const { site, targetInc_deg, targetRaan_deg, targetAlt_km } = params;
+
+  // Pre-compute inclination feasibility — time-independent
+  const azResult = launchAzimuthForInclination(site.lat_deg, targetInc_deg);
+  const incFeasible = !azResult.dogleg_needed;
+
+  // Minimum altitude sanity check
+  const altFeasible = targetAlt_km == null || targetAlt_km >= 100;
+
+  // Earth rotation latitude bonus weight (small, ≤ 0.1)
+  const latBonus = 0.1 * Math.cos(site.lat_deg * DEG_TO_RAD);
+
+  return function evaluateLaunchWindow(epoch_jd) {
+    // Approximate RAAN achievable from this site at this epoch.
+    // RAAN ≈ GMST_deg + site.lon_deg  (simplified — no orbit-plane correction)
+    const gmst_rad = gmstFromJD(epoch_jd);
+    const gmst_deg = gmst_rad * RAD_TO_DEG;
+    const raanAchieved_deg = ((gmst_deg + site.lon_deg) % 360 + 360) % 360;
+
+    // ── Inclination feasibility (primary gate) ───────────────────────────────
+    if (!incFeasible) {
+      return {
+        score:            0,
+        feasible:         false,
+        reason:           `Inclination ${targetInc_deg.toFixed(1)}° unreachable from lat ${site.lat_deg.toFixed(1)}° without dog-leg`,
+        raanAchieved_deg: Math.round(raanAchieved_deg * 10) / 10,
+        raanError_deg:    null,
+      };
+    }
+
+    if (!altFeasible) {
+      return {
+        score:            0,
+        feasible:         false,
+        reason:           `Target altitude ${targetAlt_km} km is below minimum (100 km)`,
+        raanAchieved_deg: Math.round(raanAchieved_deg * 10) / 10,
+        raanError_deg:    null,
+      };
+    }
+
+    // ── RAAN proximity score ─────────────────────────────────────────────────
+    let raanError_deg = null;
+    let raanScore     = 1.0;
+    const reasons     = [];
+
+    if (targetRaan_deg != null) {
+      // Shortest angular distance, normalised to [0, 180]
+      raanError_deg = Math.abs(((raanAchieved_deg - targetRaan_deg + 180 + 360) % 360) - 180);
+      // cos²(Δ/2): 1.0 at perfect alignment, 0.0 at 180° opposite
+      raanScore = Math.cos((raanError_deg / 2) * DEG_TO_RAD) ** 2;
+
+      if (raanError_deg < 5) {
+        reasons.push(`Excellent RAAN alignment (Δ${raanError_deg.toFixed(1)}°)`);
+      } else if (raanError_deg < 20) {
+        reasons.push(`Good RAAN alignment (Δ${raanError_deg.toFixed(1)}°)`);
+      } else if (raanError_deg < 45) {
+        reasons.push(`Moderate RAAN offset Δ${raanError_deg.toFixed(1)}° — small plane-change penalty`);
+      } else {
+        reasons.push(`Large RAAN offset Δ${raanError_deg.toFixed(1)}° — significant plane-change cost`);
+      }
+    } else {
+      reasons.push('No RAAN target — inclination-only scoring');
+    }
+
+    reasons.push(`Direct insertion feasible (az ${azResult.azimuth_deg.toFixed(1)}°)`);
+
+    // ── Combined score ───────────────────────────────────────────────────────
+    const score = Math.max(0, raanScore + latBonus * raanScore);
+
+    return {
+      score:            Math.round(score * 1000) / 1000,
+      feasible:         true,
+      reason:           reasons.join('; '),
+      raanAchieved_deg: Math.round(raanAchieved_deg * 10) / 10,
+      raanError_deg:    raanError_deg != null ? Math.round(raanError_deg * 10) / 10 : null,
+    };
   };
 }

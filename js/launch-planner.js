@@ -24,6 +24,16 @@ import {
   estimateInsertionDeltaV,
 } from './launch-vehicles.js';
 
+import {
+  searchWindows,
+  makeLaunchWindowEvaluator,
+} from './window-search.js';
+
+import {
+  utcToJulianDate,
+  julianDateToUTC,
+} from './time.js';
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -59,26 +69,35 @@ function resolveVehicle(vehicleClass) {
 /**
  * Plan a launch from a site to a target orbit.
  *
- * Computes launch azimuth, Earth-rotation benefit, insertion delta-V, and
- * vehicle suitability.  Window search is a placeholder — returns an empty
- * array for `nextWindows`.
+ * Computes launch azimuth, Earth-rotation benefit, insertion delta-V, vehicle
+ * suitability, and a ranked list of upcoming launch windows.
  *
- * @accuracy SIMPLIFIED — educational approximation; does not model full
- *   ascent trajectory, atmospheric drag profile, or staging.
+ * Window search uses a simplified coarse scan over the requested horizon.
+ * If `targetRaan_deg` is supplied the windows are scored by RAAN proximity
+ * (RAAN ≈ GMST + site longitude — simplified spherical-Earth approximation).
+ * If no RAAN target is given all feasible windows receive equal base scores.
+ *
+ * @accuracy SIMPLIFIED — engineering approximation.  Does not model full
+ *   ascent trajectory, atmospheric drag profile, or staging.  RAAN targeting
+ *   uses a zeroth-order Earth-rotation model; errors grow for high-latitude
+ *   sites and inclinations far from the site latitude.
  *
  * @param {Object} params
- * @param {Object|string} params.site          - Site object or built-in id.
- * @param {number}        params.targetAlt_km  - Target orbit altitude [km].
- * @param {number}        params.targetInc_deg - Target inclination [°].
- * @param {number}       [params.targetRaan_deg] - Target RAAN [°] (optional).
- * @param {number}        params.payloadMass_kg - Payload mass [kg].
- * @param {Object|string} params.vehicleClass  - Vehicle object or class key.
- * @param {Date|number}  [params.epoch]        - Epoch (Date or JD).
- * @param {number}       [params.maxDogleg_deg=10] - Maximum acceptable dog-leg [°].
+ * @param {Object|string} params.site              - Site object or built-in id.
+ * @param {number}        params.targetAlt_km      - Target orbit altitude [km].
+ * @param {number}        params.targetInc_deg     - Target inclination [°].
+ * @param {number}       [params.targetRaan_deg]   - Target RAAN [°] (optional).
+ * @param {number}        params.payloadMass_kg    - Payload mass [kg].
+ * @param {Object|string} params.vehicleClass      - Vehicle object or class key.
+ * @param {Date|number}  [params.epoch]            - Search start (Date or JD); defaults to now.
+ * @param {number}       [params.searchHorizon_days=7]  - Window search span [days].
+ * @param {number}       [params.maxWindows=5]          - Max windows to return.
+ * @param {number}       [params.maxDogleg_deg=10]      - Maximum acceptable dog-leg [°].
  * @returns {{feasible: boolean, azimuth_deg: number,
  *            earthRotationBenefit_m_s: number, insertionDeltaV_m_s: number,
  *            vehicleSuitability: Object, nextWindows: Array,
- *            warnings: string[], precisionLabel: string}}
+ *            windowSearchStats: Object, warnings: string[],
+ *            precisionLabel: string}}
  */
 export function planLaunch(params) {
   const {
@@ -87,6 +106,8 @@ export function planLaunch(params) {
     targetRaan_deg,
     payloadMass_kg,
     maxDogleg_deg = 10,
+    searchHorizon_days = 7,
+    maxWindows = 5,
   } = params;
 
   const site    = resolveSite(params.site);
@@ -115,10 +136,84 @@ export function planLaunch(params) {
   }
 
   if (targetRaan_deg !== undefined) {
-    warnings.push('RAAN-targeted launch window search is a placeholder — not yet implemented.');
+    warnings.push(
+      'RAAN targeting uses a simplified model (RAAN ≈ GMST + site longitude). ' +
+      'Engineering approximation only — not a precision targeting tool.'
+    );
   }
 
   const feasible = !azResult.dogleg_needed && vehResult.suitable && targetAlt_km >= 100;
+
+  // ── Window search ────────────────────────────────────────────────────────
+  let nextWindows       = [];
+  let windowSearchStats = { evaluated: 0, feasible: 0, rejected: 0 };
+
+  if (targetAlt_km >= 100) {
+    // Resolve search start epoch (JD)
+    let startJD;
+    if (params.epoch !== undefined) {
+      startJD = (params.epoch instanceof Date)
+        ? utcToJulianDate(params.epoch)
+        : Number(params.epoch);
+    } else {
+      startJD = utcToJulianDate(new Date());
+    }
+
+    const evaluator = makeLaunchWindowEvaluator({
+      site,
+      targetInc_deg,
+      targetRaan_deg,
+      targetAlt_km,
+    });
+
+    // Slots per day for 30-minute step: 24h × 2 = 48
+    const SLOTS_PER_DAY = 48;
+    const searchResult = searchWindows({
+      startEpoch: startJD,
+      endEpoch:   startJD + searchHorizon_days,
+      stepSize_s: 1800,       // 30-minute coarse step
+      evaluator,
+      // Fetch enough candidates so de-clustering can select one per 18-hour period
+      // across the full horizon.
+      maxResults: Math.ceil(searchHorizon_days * SLOTS_PER_DAY) + maxWindows,
+    });
+
+    windowSearchStats = searchResult.searchStats;
+
+    // De-cluster: keep at most one window per 18-hour period so results
+    // are spread across the horizon rather than all piled near one peak.
+    const MIN_SEP_JD = 18 / 24;
+    const dedupedWindows = [];
+    for (const w of searchResult.windows) {
+      const tooClose = dedupedWindows.some(
+        (prev) => Math.abs(w.epoch - prev.epoch) < MIN_SEP_JD
+      );
+      if (!tooClose) {
+        dedupedWindows.push(w);
+        if (dedupedWindows.length >= maxWindows) break;
+      }
+    }
+
+    nextWindows = dedupedWindows.map((w, i) => ({
+      rank:             i + 1,
+      epoch_jd:         w.epoch,
+      epochISO:         julianDateToUTC(w.epoch),
+      score:            w.score,
+      feasible:         w.feasible,
+      reason:           w.reason,
+      raanAchieved_deg: w.raanAchieved_deg ?? null,
+      raanError_deg:    w.raanError_deg    ?? null,
+    }));
+
+    if (nextWindows.length === 0) {
+      warnings.push(
+        'No feasible windows found in the search horizon — ' +
+        'check inclination accessibility from this site.'
+      );
+    }
+  } else {
+    warnings.push('Target altitude below 100 km — window search skipped.');
+  }
 
   return {
     feasible,
@@ -126,9 +221,10 @@ export function planLaunch(params) {
     earthRotationBenefit_m_s: rotResult.benefit_m_s,
     insertionDeltaV_m_s:      dvResult.deltaV_m_s,
     vehicleSuitability:       vehResult,
-    nextWindows:              [],
+    nextWindows,
+    windowSearchStats,
     warnings,
-    precisionLabel:           'Simplified educational approximation',
+    precisionLabel: 'Simplified engineering approximation — not a full dynamics solver',
   };
 }
 
