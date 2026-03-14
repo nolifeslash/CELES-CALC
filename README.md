@@ -84,7 +84,7 @@ The **Infrastructure** tab provides:
 - **"Use in RF Comparison"** button — pushes a selected ground/TTC station into the RF station comparison
 - **"Use in Launch Planner"** button — loads a launch site into the launch planning workflow
 - Global search across all entity types
-- **Validate tab** — runs `validateInfrastructure()` in-browser to check schema and behavioral integrity
+- **Validate tab** — runs infrastructure schema checks plus UI/RF/launch/scenario smoke checks in-browser
 
 ### RF Integration
 
@@ -356,6 +356,33 @@ python3 serve.py 9000       # use a custom port
 ```
 
 `serve.py` is included in the repository root. It uses only the Python 3 standard library — no `pip install` required. It automatically opens the Calculator in your default browser.
+
+### Focused local QA / smoke pass (exact steps)
+
+```bash
+# 1) From repo root, start local HTTP serving
+python3 serve.py 8080
+```
+
+Then open:
+- Calculator: `http://localhost:8080/index.html`
+- Visualizer: `http://localhost:8080/visualizer.html` (or use the Calculator's **🔭 Visualizer** button)
+
+Run this QA checklist:
+1. **Calculator → Home → 🧪 Run Tests**: confirm all acceptance tests pass.
+2. **Infrastructure → ✅ Validate**: confirm all infrastructure/UI/RF/launch/scenario smoke checks pass.
+3. **Infrastructure tab wiring**:
+   - Select a launch site → **Use in Launch Planner** → verify Launch Planner site updates.
+   - Select a ground/TT&C station → **Use in RF Comparison** → verify RF Station Comparison receives the station/band context.
+4. **Launch Planner / window search**:
+   - On Launch to Orbit, run **Plan Launch** with defaults (`400 km`, `51.6°`, `5000 kg`, horizon `7`).
+   - Verify launch cards render and window table shows scored windows or explicit no-window warning.
+5. **Scenario import/export + two-window sync**:
+   - **Export JSON**, then **Import JSON** (same file) and verify success toasts.
+   - Keep Calculator + Visualizer open; trigger **Load Demo Scenario** and verify Visualizer updates and sync indicators show connected/synced.
+6. **4-view visualizer**:
+   - Use **🔲 4-View Engineering** and switch to Earth/Moon/Orbit/Geometry tabs.
+   - Toggle infra layers (`Infra: Launch Sites`, `Infra: Ground Stations`, `Infra: TT&C Stn`) and confirm no crashes.
 
 ### Option 3 — Other local servers
 

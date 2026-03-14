@@ -348,11 +348,14 @@ export function renderCurrentTab() {
 }
 
 export function showVisualizerSyncStatus(status) {
-  const el = document.getElementById('viz-sync-indicator') || document.getElementById('viz-sync-status');
-  if (!el) return;
   const labels = { connected:'● synced', waiting:'○ waiting', paused:'⏸ paused', local_only:'◌ local only' };
-  el.textContent = labels[status] || status;
-  el.className = status;
+  const text = labels[status] || status;
+  const header = document.getElementById('viz-sync-status');
+  const footer = document.getElementById('viz-sync-indicator');
+  [header, footer].filter(Boolean).forEach(el => {
+    el.textContent = text;
+    el.className = status;
+  });
 }
 
 export function loadLastScenario() {

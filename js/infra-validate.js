@@ -303,7 +303,7 @@ export function runUiSmokeChecks() {
     'infra-inspector',
     'infra-btn-validate',
   ];
-  const behavioralCheckCount = 6; // launch, ground, TT&C, operator filters + normalization + selected station record
+  const behavioralCheckCount = 8; // launch, ground, TT&C, operator filters + normalization + selected station record + default input sanity
 
   if (typeof document === 'undefined') {
     errors.push('UI smoke checks require a browser document context');
@@ -342,6 +342,21 @@ export function runUiSmokeChecks() {
   }
   if (!normalized?.infraId) {
     errors.push('normalizeForRFEval did not preserve infraId for selected-station flow');
+  }
+
+  if (typeof document !== 'undefined') {
+    const launchAltDefault = parseFloat(document.getElementById('lto-alt')?.value ?? '');
+    const launchIncDefault = parseFloat(document.getElementById('lto-inc')?.value ?? '');
+    const launchPayloadDefault = parseFloat(document.getElementById('lto-payload')?.value ?? '');
+    if (!Number.isFinite(launchAltDefault) || !Number.isFinite(launchIncDefault) || !Number.isFinite(launchPayloadDefault)) {
+      errors.push('Launch planner default inputs are missing (alt/inc/payload)');
+    }
+
+    const stationAltDefault = parseFloat(document.getElementById('st-alt')?.value ?? '');
+    const stationIncDefault = parseFloat(document.getElementById('st-inc')?.value ?? '');
+    if (!Number.isFinite(stationAltDefault) || !Number.isFinite(stationIncDefault)) {
+      errors.push('RF station-comparison default inputs are missing (alt/inc)');
+    }
   }
 
   const totalChecks = requiredIds.length + behavioralCheckCount;
