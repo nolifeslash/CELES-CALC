@@ -301,12 +301,13 @@ function _normaliseTarget(tgt) {
  * @returns {object} A valid v2.0 scenario (new object; input is not mutated).
  */
 export function migrateScenario(scenario) {
+  const inputScenario = (scenario && typeof scenario === 'object') ? scenario : {};
   const base = createEmptyScenario();
-  const migrated = mergeScenarioUpdates(base, scenario);
+  const migrated = mergeScenarioUpdates(base, inputScenario);
 
   // ── tleResults → trackedObjectResults ──────────────────────────────────────
-  if (scenario.tleResults != null && scenario.tleResults !== undefined) {
-    const tleData = scenario.tleResults;
+  if (inputScenario.tleResults != null && inputScenario.tleResults !== undefined) {
+    const tleData = inputScenario.tleResults;
     if (Array.isArray(tleData)) {
       migrated.trackedObjectResults = tleData;
     } else if (tleData && typeof tleData === 'object') {
@@ -314,12 +315,42 @@ export function migrateScenario(scenario) {
     }
     // Non-object/non-array tleData (e.g. string, number) is silently dropped
     delete migrated.tleResults;
-  } else if (scenario.tleResults === null) {
+  } else if (inputScenario.tleResults === null) {
     delete migrated.tleResults;
   }
 
   // Stamp version
   migrated.version = '2.0';
+  const arrayFields = [
+    'observers', 'targets', 'illuminationResults', 'visibilityResults',
+    'trackedObjectResults', 'selectedObjects', 'warnings', 'links',
+    'networkRoutes', 'groundStationRecommendations', 'launchWindows',
+    'launchSolutions', 'rpoPlans', 'transferPlans', 'missionLegs',
+  ];
+  arrayFields.forEach(key => {
+    if (!Array.isArray(migrated[key])) migrated[key] = [...base[key]];
+  });
+
+  const objectFields = [
+    'timeInput', 'timeSystems', 'bodies', 'coordinateInputs', 'convertedCoordinates',
+    'orbitResults', 'distanceResults', 'gridResults', 'layers', 'settings',
+    'precisionLabels', 'rfScenario', 'launchScenario', 'deltaVBudget',
+    'infrastructureDataRefs', 'infrastructure', 'interferenceResults',
+    'jammingResults', 'sigintResults',
+  ];
+  objectFields.forEach(key => {
+    if (!migrated[key] || typeof migrated[key] !== 'object' || Array.isArray(migrated[key])) {
+      migrated[key] = { ...base[key] };
+    }
+  });
+  if (!migrated.infrastructure || typeof migrated.infrastructure !== 'object' || Array.isArray(migrated.infrastructure)) {
+    migrated.infrastructure = { ...base.infrastructure };
+  } else {
+    migrated.infrastructure = {
+      selectedStation: migrated.infrastructure.selectedStation ?? null,
+      selectedLaunchSite: migrated.infrastructure.selectedLaunchSite ?? null,
+    };
+  }
 
   return migrated;
 }
@@ -450,6 +481,7 @@ export function mergeScenarioUpdates(base, updates) {
   if (!updates || typeof updates !== 'object') return { ...base };
   const result = { ...base };
   for (const key of Object.keys(updates)) {
+    if (key === '__proto__' || key === 'prototype' || key === 'constructor') continue;
     const val = updates[key];
     if (Array.isArray(val)) {
       result[key] = [...val];

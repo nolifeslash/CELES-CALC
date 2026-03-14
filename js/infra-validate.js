@@ -27,6 +27,8 @@ import {
   scenarioToJSON,
   scenarioFromJSON,
 } from './scenario.js';
+import { loadStations, rankStations } from './groundstations.js';
+import { searchWindows, makeLaunchWindowEvaluator } from './window-search.js';
 
 // ─── Required field maps ──────────────────────────────────────────────────────
 
@@ -354,6 +356,104 @@ export function runUiSmokeChecks() {
 }
 
 /**
+ * Lightweight RF integration smoke checks for infrastructure-selected stations.
+ *
+ * @returns {ValidationResult}
+ */
+export function runRfIntegrationSmokeChecks() {
+  const errors = [];
+  const selected = normalizeForRFEval(GROUND_STATIONS[0], { band: 'X' });
+  const stations = loadStations([selected]);
+  const ranked = rankStations(stations, {
+    orbitAlt_km: 550,
+    inclination_deg: 53,
+    band: selected.band,
+    weatherPreset: 'clear_sky',
+    optimizationMode: 'highest_margin',
+  });
+  if (!Array.isArray(ranked) || ranked.length !== 1) {
+    errors.push('RF ranking did not return exactly one ranked station for selected-station flow');
+  }
+  const score = ranked[0]?.score;
+  if (!Number.isFinite(score)) {
+    errors.push('RF ranking returned non-finite station score');
+  }
+  if (ranked[0]?.station?.infraId !== selected.infraId) {
+    errors.push('RF ranking did not preserve selected station infraId');
+  }
+
+  const totalChecks = 3;
+  const failed = errors.length;
+  return {
+    pass: failed === 0,
+    total: totalChecks,
+    passed: totalChecks - failed,
+    failed,
+    errors,
+  };
+}
+
+/**
+ * Lightweight launch/window smoke checks for feasible and infeasible cases.
+ *
+ * @returns {ValidationResult}
+ */
+export function runLaunchPlannerSmokeChecks() {
+  const errors = [];
+  const nowJD = 2_440_587.5 + Date.now() / 86_400_000;
+
+  const feasibleEval = makeLaunchWindowEvaluator({
+    site: LAUNCH_SITES[0],
+    targetInc_deg: 51.6,
+    targetRaan_deg: 40,
+    targetAlt_km: 400,
+  });
+  const feasibleWindows = searchWindows({
+    startEpoch: nowJD,
+    endEpoch: nowJD + 0.5,
+    stepSize_s: 3600,
+    evaluator: feasibleEval,
+    maxResults: 5,
+  }).windows;
+  if (!Array.isArray(feasibleWindows) || feasibleWindows.length === 0) {
+    errors.push('Launch window search returned no windows for a feasible setup');
+  }
+  if (!feasibleWindows.some(w => w.feasible === true)) {
+    errors.push('Launch window search did not mark any feasible windows for feasible setup');
+  }
+
+  const infeasibleEval = makeLaunchWindowEvaluator({
+    site: LAUNCH_SITES.find(s => Number(s.lat_deg) > 60) || LAUNCH_SITES[0],
+    targetInc_deg: 10,
+    targetRaan_deg: 30,
+    targetAlt_km: 400,
+  });
+  const infeasibleWindows = searchWindows({
+    startEpoch: nowJD,
+    endEpoch: nowJD + 0.25,
+    stepSize_s: 3600,
+    evaluator: infeasibleEval,
+    maxResults: 4,
+  }).windows;
+  if (!infeasibleWindows.every(w => w.feasible === false)) {
+    errors.push('Infeasible launch setup produced feasible windows unexpectedly');
+  }
+  if (!infeasibleWindows.every(w => typeof w.reason === 'string' && w.reason.length > 0)) {
+    errors.push('Infeasible launch windows are missing explanatory reason strings');
+  }
+
+  const totalChecks = 4;
+  const failed = errors.length;
+  return {
+    pass: failed === 0,
+    total: totalChecks,
+    passed: totalChecks - failed,
+    failed,
+    errors,
+  };
+}
+
+/**
  * Scenario import/export round-trip checks for infrastructure/RF/launch branches.
  *
  * @returns {ValidationResult}
@@ -417,13 +517,15 @@ export function runScenarioRoundTripChecks() {
 export function renderValidationResults(container) {
   const infraResult = runInfrastructureSmokeChecks();
   const uiResult = runUiSmokeChecks();
+  const rfResult = runRfIntegrationSmokeChecks();
+  const launchResult = runLaunchPlannerSmokeChecks();
   const scenarioResult = runScenarioRoundTripChecks();
   const result = {
-    pass: infraResult.pass && uiResult.pass && scenarioResult.pass,
-    total: infraResult.total + uiResult.total + scenarioResult.total,
-    passed: infraResult.passed + uiResult.passed + scenarioResult.passed,
-    failed: infraResult.failed + uiResult.failed + scenarioResult.failed,
-    errors: [...infraResult.errors, ...uiResult.errors, ...scenarioResult.errors],
+    pass: infraResult.pass && uiResult.pass && rfResult.pass && launchResult.pass && scenarioResult.pass,
+    total: infraResult.total + uiResult.total + rfResult.total + launchResult.total + scenarioResult.total,
+    passed: infraResult.passed + uiResult.passed + rfResult.passed + launchResult.passed + scenarioResult.passed,
+    failed: infraResult.failed + uiResult.failed + rfResult.failed + launchResult.failed + scenarioResult.failed,
+    errors: [...infraResult.errors, ...uiResult.errors, ...rfResult.errors, ...launchResult.errors, ...scenarioResult.errors],
   };
 
   let html = `<div class="card"><div class="card-title">Infrastructure Validation</div>`;
@@ -444,6 +546,14 @@ export function renderValidationResults(container) {
   html += `<div class="infra-inspector-row">
     <span class="infra-inspector-label">UI Smoke Checks</span>
     <span class="infra-inspector-value">${uiResult.passed}/${uiResult.total}</span>
+  </div>`;
+  html += `<div class="infra-inspector-row">
+    <span class="infra-inspector-label">RF Integration Checks</span>
+    <span class="infra-inspector-value">${rfResult.passed}/${rfResult.total}</span>
+  </div>`;
+  html += `<div class="infra-inspector-row">
+    <span class="infra-inspector-label">Launch Planner Checks</span>
+    <span class="infra-inspector-value">${launchResult.passed}/${launchResult.total}</span>
   </div>`;
   html += `<div class="infra-inspector-row">
     <span class="infra-inspector-label">Scenario Round-Trip Checks</span>

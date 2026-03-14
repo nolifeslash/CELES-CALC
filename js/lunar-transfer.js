@@ -144,6 +144,23 @@ export function planLunarTransfer(params) {
     { name: 'Mid-course correction', type: 'correction', deltaV_m_s: midCourseDV,    duration_s: 0 },
     { name: 'LOI burn',              type: 'insertion',   deltaV_m_s: loi.deltaV_m_s, duration_s: 0 },
   ];
+  const departureJD = typeof departureEpoch === 'number'
+    ? departureEpoch
+    : departureEpoch instanceof Date
+      ? (2_440_587.5 + departureEpoch.getTime() / 86_400_000)
+      : (2_440_587.5 + Date.now() / 86_400_000);
+  const windowScan = scanLunarWindows({
+    startEpoch: departureJD - 1,
+    endEpoch: departureJD + 1,
+    step_s: 7200,
+  });
+  const windowCandidates = (windowScan.windows || []).slice(0, 3).map((w, i) => ({
+    rank: i + 1,
+    epoch_jd: w.epoch,
+    moonDist_m: w.moonDist_m,
+    score: Math.round((w.score ?? 0) * 10) / 10,
+    reason: 'Simplified lunar-distance window score',
+  }));
 
   const summary = [
     '─── Lunar Transfer Summary ───',
@@ -165,7 +182,7 @@ export function planLunarTransfer(params) {
     totalDeltaV_m_s:    totalDV,
     transferDuration_s: tli.transferDuration_s,
     missionLegs,
-    windowCandidates:   [],
+    windowCandidates,
     summary,
     precisionLabel:     'Simplified educational approximation',
   };
