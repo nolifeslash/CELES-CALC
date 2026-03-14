@@ -82,27 +82,30 @@ export function refreshBrowser() { _renderAll(); }
 
 function _applyLaunchFilter() {
   Object.assign(_filters.launch, {
-    status:  _val('infra-launch-filter-status'),
-    country: _val('infra-launch-filter-country').trim(),
-    text:    _val('infra-launch-filter-text').trim(),
+    status:   _val('infra-launch-filter-status'),
+    country:  _val('infra-launch-filter-country').trim(),
+    siteType: _val('infra-launch-filter-sitetype'),
+    text:     _val('infra-launch-filter-text').trim(),
   });
   _renderList('infra-launch-list', filterLaunchSites(LAUNCH_SITES,   _compact(_filters.launch)), 'launch_site');
 }
 
 function _applyGroundFilter() {
   Object.assign(_filters.ground, {
-    status: _val('infra-ground-filter-status'),
-    band:   _val('infra-ground-filter-band').trim(),
-    text:   _val('infra-ground-filter-text').trim(),
+    status:  _val('infra-ground-filter-status'),
+    country: _val('infra-ground-filter-country').trim(),
+    band:    _val('infra-ground-filter-band').trim(),
+    text:    _val('infra-ground-filter-text').trim(),
   });
   _renderList('infra-ground-list', filterGroundStations(GROUND_STATIONS, _compact(_filters.ground)), 'ground_station');
 }
 
 function _applyTTCFilter() {
   Object.assign(_filters.ttc, {
-    status: _val('infra-ttc-filter-status'),
-    band:   _val('infra-ttc-filter-band').trim(),
-    text:   _val('infra-ttc-filter-text').trim(),
+    status:  _val('infra-ttc-filter-status'),
+    country: _val('infra-ttc-filter-country').trim(),
+    band:    _val('infra-ttc-filter-band').trim(),
+    text:    _val('infra-ttc-filter-text').trim(),
   });
   _renderList('infra-ttc-list', filterTTCStations(TTC_STATIONS, _compact(_filters.ttc)), 'ttc_station');
 }
@@ -132,6 +135,7 @@ function _applyGlobalSearch() {
 
   if (total === 0) {
     panel.innerHTML = `<p class="infra-empty">No results for <strong>${_esc(query)}</strong>.</p>`;
+    panel.classList.remove('infra-inspector--hidden');
     return;
   }
 
@@ -141,6 +145,7 @@ function _applyGlobalSearch() {
     html += s.items.map(item => _itemCardHTML(item, s.type)).join('');
   });
   panel.innerHTML = html;
+  panel.classList.remove('infra-inspector--hidden');
 
   panel.querySelectorAll('.infra-item[data-id]').forEach(el =>
     el.addEventListener('click', () => {
@@ -298,6 +303,7 @@ function _showInspector(record, type) {
   panel.querySelector('#btn-infra-use-launch')?.addEventListener('click', () =>
     document.dispatchEvent(new CustomEvent('infra:selectlaunchsite', { detail: { site: record }, bubbles: true }))
   );
+  panel.classList.remove('infra-inspector--hidden');
 }
 
 /** Clear the inspector and deselect any active list item. */
@@ -306,7 +312,10 @@ function _clearInspector() {
   _selectedType   = null;
   document.querySelectorAll('.infra-item--active').forEach(el => el.classList.remove('infra-item--active'));
   const panel = document.getElementById('infra-inspector');
-  if (panel) panel.innerHTML = '<p class="infra-empty">Select a record to view details.</p>';
+  if (panel) {
+    panel.classList.add('infra-inspector--hidden');
+    panel.innerHTML = '';
+  }
 }
 
 /* ================================================================
