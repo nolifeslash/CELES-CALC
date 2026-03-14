@@ -1537,7 +1537,6 @@ function _isValidInfrastructureLaunchSite(site) {
 
 function _findBuiltinLaunchSiteMatch(site) {
   if (!_isValidInfrastructureLaunchSite(site)) return null;
-  const normName = (site.name || '').toLowerCase();
   return LaunchSites.BUILTIN_SITES.find(b =>
     Math.abs(Number(site.lat_deg) - Number(b.lat_deg)) < 0.8
     && Math.abs(Number(site.lon_deg) - Number(b.lon_deg)) < 0.8

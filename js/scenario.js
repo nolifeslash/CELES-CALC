@@ -335,7 +335,7 @@ export function migrateScenario(scenario) {
     'timeInput', 'timeSystems', 'bodies', 'coordinateInputs', 'convertedCoordinates',
     'orbitResults', 'distanceResults', 'gridResults', 'layers', 'settings',
     'precisionLabels', 'rfScenario', 'launchScenario', 'deltaVBudget',
-    'infrastructureDataRefs', 'infrastructure', 'interferenceResults',
+    'infrastructureDataRefs', 'interferenceResults',
     'jammingResults', 'sigintResults',
   ];
   objectFields.forEach(key => {
