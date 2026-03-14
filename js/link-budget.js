@@ -30,6 +30,10 @@ import { BOLTZMANN_DB, MODULATION_PRESETS } from './rf-constants.js';
  * @returns {number} FSPL [dB].
  */
 export function freeSpacePathLoss(freq_Hz, distance_m) {
+  if (freq_Hz <= 0 || distance_m <= 0) {
+    console.warn('[link-budget] freeSpacePathLoss: freq_Hz and distance_m must be > 0; returning NaN.');
+    return NaN;
+  }
   const fspl = (4 * Math.PI * distance_m * freq_Hz) / SPEED_OF_LIGHT;
   return 20 * Math.log10(fspl);
 }
@@ -116,7 +120,9 @@ export function computeLinkBudget(params) {
   const noiseDensity_dBW_Hz = BOLTZMANN_DB + 10 * Math.log10(systemNoiseTemp_K);
 
   const cn0_dBHz = rxPower_dBW - noiseDensity_dBW_Hz;
-  const ebN0_dB  = cn0_dBHz - 10 * Math.log10(dataRate_bps);
+  // Guard against zero or sub-Hz data rate to avoid -Infinity from log10(0)
+  const safeDataRate = Math.max(dataRate_bps, 1);
+  const ebN0_dB  = cn0_dBHz - 10 * Math.log10(safeDataRate);
 
   const mod = MODULATION_PRESETS[modulationPreset] || MODULATION_PRESETS.QPSK_12;
   const requiredEbN0_dB = mod.requiredEbN0_dB;

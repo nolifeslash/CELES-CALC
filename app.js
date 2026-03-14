@@ -922,15 +922,15 @@ function calcLinkBudget() {
   const txPower   = UI.validateNumber('lb-txpower');   if (txPower   === null) return;
   const txGain    = UI.validateNumber('lb-txgain');     if (txGain    === null) return;
   const rxGain    = UI.validateNumber('lb-rxgain');     if (rxGain    === null) return;
-  const freqGHz   = UI.validateNumber('lb-freq');       if (freqGHz   === null) return;
-  const bwMHz     = UI.validateNumber('lb-bw');         if (bwMHz     === null) return;
-  const drMbps    = UI.validateNumber('lb-datarate');   if (drMbps    === null) return;
-  const distKm    = UI.validateNumber('lb-distance');   if (distKm    === null) return;
+  const freqGHz   = UI.validateNumber('lb-freq',     { label: 'Frequency',  min: 0.001 }); if (freqGHz   === null) return;
+  const bwMHz     = UI.validateNumber('lb-bw',       { label: 'Bandwidth',  min: 0.001 }); if (bwMHz     === null) return;
+  const drMbps    = UI.validateNumber('lb-datarate', { label: 'Data Rate',  min: 0.001 }); if (drMbps    === null) return;
+  const distKm    = UI.validateNumber('lb-distance', { label: 'Distance',   min: 0.001 }); if (distKm    === null) return;
   const pointLoss = UI.validateNumber('lb-pointloss');  if (pointLoss === null) return;
   const miscLoss  = UI.validateNumber('lb-miscloss');   if (miscLoss  === null) return;
   const elevation = UI.validateNumber('lb-elevation');  if (elevation === null) return;
-  const weather   = document.getElementById('lb-weather').value;
-  const modPreset = document.getElementById('lb-modulation').value;
+  const weather   = document.getElementById('lb-weather')?.value ?? 'clear_sky';
+  const modPreset = document.getElementById('lb-modulation')?.value ?? 'QPSK_12';
 
   const bandName = RFConstants.bandForFrequency(freqGHz) || 'Ku';
   const atmosLoss = Atmosphere.atmosphericLoss(bandName, weather, elevation);

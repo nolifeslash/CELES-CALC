@@ -222,11 +222,26 @@ export function buildScenarioState(inputs = {}) {
 
 /**
  * Normalise / fill defaults for an observer descriptor.
+ *
+ * The spread `...obs` is placed FIRST so that the explicit normalised
+ * property assignments that follow it always override whatever raw
+ * (possibly `undefined`) values the caller passed in.  In JavaScript
+ * the last definition of a key in an object literal wins, so:
+ *
+ *   { ...obs, lat_deg: obs.lat_deg ?? obs.lat ?? 0 }
+ *
+ * ensures `lat_deg` is always the coalesced value even when
+ * `obs.lat_deg` is explicitly `undefined` or the key is absent.
+ * Placing the spread last (original bug) would have allowed explicit
+ * `undefined` values in `obs` to silently override the coalesced
+ * default.  Extra unknown properties from `obs` are still preserved.
+ *
  * @param {object} obs
  * @returns {object}
  */
 function _normaliseObserver(obs) {
   return {
+    ...obs,
     type:    obs.type    ?? 'earth_surface',
     label:   obs.label   ?? '',
     lat_deg: obs.lat_deg ?? obs.lat ?? 0,
@@ -235,17 +250,21 @@ function _normaliseObserver(obs) {
     x_eci:   obs.x_eci   ?? null,
     y_eci:   obs.y_eci   ?? null,
     z_eci:   obs.z_eci   ?? null,
-    ...obs,
   };
 }
 
 /**
  * Normalise / fill defaults for a target descriptor.
+ *
+ * Same spread-first convention as {@link _normaliseObserver} — see that
+ * function's documentation for the reasoning.
+ *
  * @param {object} tgt
  * @returns {object}
  */
 function _normaliseTarget(tgt) {
   return {
+    ...tgt,
     type:    tgt.type    ?? 'earth_point',
     label:   tgt.label   ?? '',
     lat_deg: tgt.lat_deg ?? tgt.lat ?? 0,
@@ -254,7 +273,6 @@ function _normaliseTarget(tgt) {
     x_eci:   tgt.x_eci   ?? null,
     y_eci:   tgt.y_eci   ?? null,
     z_eci:   tgt.z_eci   ?? null,
-    ...tgt,
   };
 }
 
@@ -446,9 +464,9 @@ export function scenarioToJSON(scenario) {
  */
 export function scenarioFromJSON(jsonStr) {
   const parsed = JSON.parse(jsonStr);
-  const base   = createEmptyScenario();
-  const merged = mergeScenarioUpdates(base, parsed);
-  return migrateScenario(merged);
+  // migrateScenario internally merges into a fresh empty scenario, so pass
+  // parsed directly to avoid the double-merge overhead.
+  return migrateScenario(parsed);
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

@@ -394,12 +394,9 @@ export function updateSyncBadge(status) {
   const badge = document.getElementById('sync-badge');
   const label = document.getElementById('sync-label');
   if (!badge) return;
-  badge.className = 'sync-dot'; // reset
-  badge.className = _syncColors[status] || '';
+  // Replace all classes in one shot so we never accumulate stale status classes.
+  badge.className = `sync-dot ${_syncColors[status] || 'local_only'}`;
   if (label) label.textContent = _syncLabels[status] || status;
-  // Re-apply the base id styling
-  badge.id = 'sync-badge';
-  badge.classList.add(_syncColors[status] || 'local_only');
 }
 
 /* ================================================================
